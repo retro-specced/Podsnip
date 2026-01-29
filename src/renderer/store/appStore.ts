@@ -34,9 +34,11 @@ interface AppStore {
   isPlaying: boolean;
   currentTime: number;
   playbackSpeed: number;
+  jumpToTime: number | null; // Used for jumping from notes
   setIsPlaying: (playing: boolean) => void;
   setCurrentTime: (time: number) => void;
   setPlaybackSpeed: (speed: number) => void;
+  setJumpToTime: (time: number | null) => void;
 
   // UI state
   isLoading: boolean;
@@ -62,6 +64,7 @@ export const useAppStore = create<AppStore>((set) => ({
   isPlaying: false,
   currentTime: 0,
   playbackSpeed: 1.0,
+  jumpToTime: null,
   isLoading: false,
   error: null,
   selectedTranscript: null,
@@ -88,6 +91,7 @@ export const useAppStore = create<AppStore>((set) => ({
   setIsPlaying: (playing) => set({ isPlaying: playing }),
   setCurrentTime: (time) => set({ currentTime: time }),
   setPlaybackSpeed: (speed) => set({ playbackSpeed: speed }),
+  setJumpToTime: (time) => set({ jumpToTime: time }),
 
   setIsLoading: (loading) => set({ isLoading: loading }),
   setError: (error) => set({ error }),

@@ -10,10 +10,12 @@ function PlayerView() {
     isPlaying,
     currentTime,
     playbackSpeed,
+    jumpToTime,
     setTranscripts,
     setIsPlaying,
     setCurrentTime,
     setPlaybackSpeed,
+    setJumpToTime,
     setSelectedTranscript,
     setCurrentState,
     setError,
@@ -24,12 +26,23 @@ function PlayerView() {
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [activeSegmentIndex, setActiveSegmentIndex] = useState(0);
   const [audioError, setAudioError] = useState<string | null>(null);
+  const [isLoadingJump, setIsLoadingJump] = useState(false);
+  const pendingSeekTimeRef = useRef<number | null>(null);
+  const hasJumpedRef = useRef(false);
 
   useEffect(() => {
     if (currentEpisode) {
       setAudioError(null);
       loadTranscript();
+
+      // Only reset currentTime if we're not in the middle of a jump from notes
+      if (pendingSeekTimeRef.current === null) {
+        setCurrentTime(0);
+        setIsPlaying(false); // Pause when switching episodes normally
+      }
+
       loadPlaybackState();
+      hasJumpedRef.current = false; // Reset jump flag for new episode
 
       // Load audio
       if (audioRef.current) {
@@ -43,6 +56,19 @@ function PlayerView() {
       audioRef.current.playbackRate = playbackSpeed;
     }
   }, [playbackSpeed]);
+
+  // Handle seeking when jumpToTime is set (e.g., from jump to podcast)
+  useEffect(() => {
+    if (!hasJumpedRef.current && jumpToTime !== null && jumpToTime > 0) {
+      // Store the pending seek time
+      pendingSeekTimeRef.current = jumpToTime;
+      setIsLoadingJump(true);
+      hasJumpedRef.current = true; // Mark that we've initiated a jump
+      // Clear the jumpToTime after we've processed it
+      setJumpToTime(null);
+    }
+  }, [jumpToTime]);
+
 
   useEffect(() => {
     // Auto-scroll to active segment
@@ -88,6 +114,11 @@ function PlayerView() {
 
   const loadPlaybackState = async () => {
     if (!currentEpisode || !audioRef.current) return;
+
+    // Don't load saved playback state if currentTime is already set (e.g., from jump to podcast)
+    if (currentTime > 0) {
+      return;
+    }
 
     try {
       const state = await window.api.playback.get(currentEpisode.id);
@@ -184,6 +215,14 @@ function PlayerView() {
 
   return (
     <div className="player-view">
+      {isLoadingJump && (
+        <div className="jump-loading-overlay">
+          <div className="jump-loading-content">
+            <div className="spinner"></div>
+            <p>Loading podcast...</p>
+          </div>
+        </div>
+      )}
       <div className="player-left">
         <div className="player-container">
           {currentEpisode && currentEpisode.artwork_url && (
@@ -215,6 +254,21 @@ function PlayerView() {
             onLoadedMetadata={() => {
               console.log('Audio loaded successfully');
               setAudioError(null);
+
+              // If there's a pending seek (from jump to podcast), perform it now
+              if (pendingSeekTimeRef.current !== null && audioRef.current) {
+                audioRef.current.currentTime = pendingSeekTimeRef.current;
+                pendingSeekTimeRef.current = null;
+
+                // Auto-play after seeking
+                audioRef.current.play().then(() => {
+                  setIsPlaying(true);
+                  setIsLoadingJump(false);
+                }).catch((error) => {
+                  console.error('Failed to auto-play:', error);
+                  setIsLoadingJump(false);
+                });
+              }
             }}
             crossOrigin="anonymous"
           />

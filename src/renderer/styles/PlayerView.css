@@ -2,7 +2,37 @@
   display: flex;
   height: 100%;
   overflow: hidden;
+  position: relative;
 }
+
+.jump-loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.jump-loading-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-lg);
+  color: white;
+}
+
+.jump-loading-content p {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+}
+
 
 .player-left {
   flex: 1;

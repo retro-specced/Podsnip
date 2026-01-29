@@ -10,18 +10,61 @@ interface AddPodcastModalProps {
 function AddPodcastModal({ isOpen, onClose }: AddPodcastModalProps) {
     const [feedUrl, setFeedUrl] = useState('');
     const [isAdding, setIsAdding] = useState(false);
-    const { addPodcast, setCurrentPodcast, setEpisodes, setError } = useAppStore();
+    const [localError, setLocalError] = useState<string | null>(null);
+    const { addPodcast, setCurrentPodcast, setEpisodes } = useAppStore();
+
+    const parseErrorMessage = (error: unknown): string => {
+        if (!(error instanceof Error)) {
+            return 'Failed to add podcast. Please try again.';
+        }
+
+        const message = error.message;
+
+        // Handle duplicate podcast
+        if (message.includes('UNIQUE constraint failed: podcasts.feed_url')) {
+            return 'This podcast is already in your library.';
+        }
+
+        // Handle network errors
+        if (message.includes('network') || message.includes('fetch')) {
+            return 'Unable to connect. Please check your internet connection.';
+        }
+
+        // Handle invalid feed
+        if (message.includes('Invalid feed') || message.includes('parse')) {
+            return 'Invalid podcast feed. Please check the URL and try again.';
+        }
+
+        // Handle timeout
+        if (message.includes('timeout')) {
+            return 'Request timed out. Please try again.';
+        }
+
+        // Strip technical prefixes like "Error invoking remote method"
+        const cleanMessage = message
+            .replace(/^Error invoking remote method '[^']+': /, '')
+            .replace(/^Error: /, '')
+            .replace(/Failed to add podcast feed: /, '');
+
+        // If the cleaned message is still technical, provide a generic message
+        if (cleanMessage.includes('constraint') || cleanMessage.includes('SQL')) {
+            return 'Unable to add podcast. Please try again.';
+        }
+
+        return cleanMessage || 'Failed to add podcast. Please try again.';
+    };
+
 
     const handleAddPodcast = async (e: React.FormEvent) => {
         e.preventDefault();
 
         if (!feedUrl.trim()) {
-            setError('Please enter a podcast feed URL');
+            setLocalError('Please enter a podcast feed URL');
             return;
         }
 
         setIsAdding(true);
-        setError(null);
+        setLocalError(null);
 
         try {
             const podcast = await window.api.podcast.add(feedUrl);
@@ -34,9 +77,10 @@ function AddPodcastModal({ isOpen, onClose }: AddPodcastModalProps) {
 
             // Reset form and close modal
             setFeedUrl('');
+            setLocalError(null);
             onClose();
         } catch (error) {
-            setError(error instanceof Error ? error.message : 'Failed to add podcast');
+            setLocalError(parseErrorMessage(error));
         } finally {
             setIsAdding(false);
         }
@@ -45,7 +89,7 @@ function AddPodcastModal({ isOpen, onClose }: AddPodcastModalProps) {
     const handleClose = () => {
         if (!isAdding) {
             setFeedUrl('');
-            setError(null);
+            setLocalError(null);
             onClose();
         }
     };
@@ -107,6 +151,11 @@ function AddPodcastModal({ isOpen, onClose }: AddPodcastModalProps) {
                                     className="modal-feed-input"
                                     required
                                 />
+                                {localError && (
+                                    <div className="modal-error">
+                                        {localError}
+                                    </div>
+                                )}
                                 <button
                                     type="submit"
                                     disabled={isAdding}

@@ -18,6 +18,7 @@
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -41,6 +42,7 @@
     opacity: 0;
     transform: translateY(20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -191,6 +193,30 @@
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+.modal-error {
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: #fff3f3;
+  border: 1px solid #ff3b30;
+  border-radius: var(--radius-sm);
+  color: #d32f2f;
+  font-size: var(--font-size-sm);
+  line-height: 1.4;
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 
 .modal-add-button {
   padding: var(--spacing-md) var(--spacing-lg);

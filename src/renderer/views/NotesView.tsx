@@ -13,7 +13,16 @@ interface EnrichedAnnotation extends Annotation {
 }
 
 function NotesView() {
-  const { annotations, setAnnotations, setError } = useAppStore();
+  const {
+    annotations,
+    setAnnotations,
+    setError,
+    setCurrentState,
+    setCurrentEpisode,
+    setJumpToTime,
+    setCurrentPodcast,
+    setEpisodes,
+  } = useAppStore();
   const [filteredAnnotations, setFilteredAnnotations] = useState<EnrichedAnnotation[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest'>('newest');
@@ -68,6 +77,35 @@ function NotesView() {
     }
   };
 
+  const handleJumpToPodcast = async (annotation: EnrichedAnnotation) => {
+    try {
+      // Get the episode
+      const episode = await window.api.episode.get(annotation.episode_id);
+
+      // Get the podcast for this episode
+      const podcast = await window.api.podcast.get(episode.podcast_id);
+
+      // Load all episodes for the podcast
+      const episodes = await window.api.episode.list(podcast.id);
+
+      // Set the current podcast and episodes
+      setCurrentPodcast(podcast);
+      setEpisodes(episodes);
+
+      // Set the current episode
+      setCurrentEpisode(episode);
+
+      // Set the jump time (this will be handled by PlayerView)
+      setJumpToTime(annotation.start_time);
+
+      // Navigate to player view
+      setCurrentState('player');
+    } catch (error) {
+      setError('Failed to jump to podcast');
+    }
+  };
+
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
@@ -83,7 +121,7 @@ function NotesView() {
     const hrs = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
     const secs = Math.floor(seconds % 60);
-    
+
     if (hrs > 0) {
       return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     }
@@ -133,6 +171,14 @@ function NotesView() {
                     <h4 className="note-episode-title">{annotation.episode_title}</h4>
                     <div className="note-timestamp">{formatTime(annotation.start_time)}</div>
                   </div>
+                  <button
+                    className="note-jump-button"
+                    onClick={() => handleJumpToPodcast(annotation)}
+                    title="Jump to this moment in the podcast"
+                  >
+                    <span className="jump-icon">🎧</span>
+                    <span className="jump-text">Jump to Podcast</span>
+                  </button>
                   <button
                     className="note-delete"
                     onClick={() => handleDeleteAnnotation(annotation.id)}
