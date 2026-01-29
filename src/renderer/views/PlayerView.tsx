@@ -30,7 +30,7 @@ function PlayerView() {
       setAudioError(null);
       loadTranscript();
       loadPlaybackState();
-      
+
       // Load audio
       if (audioRef.current) {
         audioRef.current.load();
@@ -57,25 +57,25 @@ function PlayerView() {
 
     try {
       const existingTranscript = await window.api.transcription.get(currentEpisode.id);
-      
-      if (existingTranscript.length > 0) {
-        setTranscripts(existingTranscript);
-      }
-      // Don't auto-transcribe - let user click the button
+
+      // Always set transcripts (even if empty) to clear old transcripts when switching episodes
+      setTranscripts(existingTranscript);
     } catch (error) {
       console.error('Failed to load transcript:', error);
+      // Clear transcripts on error
+      setTranscripts([]);
     }
   };
 
   const startTranscription = async () => {
     if (!currentEpisode) return;
-    
+
     setIsTranscribing(true);
     setError(null);
-    
+
     try {
       await window.api.transcription.create(currentEpisode.id, currentEpisode.audio_url);
-      
+
       // Reload transcript after creation
       const newTranscript = await window.api.transcription.get(currentEpisode.id);
       setTranscripts(newTranscript);
@@ -152,10 +152,10 @@ function PlayerView() {
 
   const handleSegmentClick = (segment: Transcript) => {
     if (!audioRef.current) return;
-    
+
     // Jump to timestamp
     audioRef.current.currentTime = segment.start_time;
-    
+
     // Pause and enter annotation mode
     audioRef.current.pause();
     setIsPlaying(false);
@@ -167,7 +167,7 @@ function PlayerView() {
     const hrs = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
     const secs = Math.floor(seconds % 60);
-    
+
     if (hrs > 0) {
       return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     }
@@ -196,9 +196,9 @@ function PlayerView() {
               }}
             />
           )}
-          
+
           <h2 className="player-episode-title">{currentEpisode.title}</h2>
-          
+
           <audio
             ref={audioRef}
             src={currentEpisode.audio_url}
@@ -290,9 +290,8 @@ function PlayerView() {
               {transcripts.map((segment, index) => (
                 <div
                   key={segment.id}
-                  className={`transcript-segment ${index === activeSegmentIndex ? 'active' : ''} ${
-                    index < activeSegmentIndex ? 'past' : ''
-                  } ${index > activeSegmentIndex ? 'future' : ''}`}
+                  className={`transcript-segment ${index === activeSegmentIndex ? 'active' : ''} ${index < activeSegmentIndex ? 'past' : ''
+                    } ${index > activeSegmentIndex ? 'future' : ''}`}
                   onClick={() => handleSegmentClick(segment)}
                 >
                   <span className="segment-time">{formatTime(segment.start_time)}</span>

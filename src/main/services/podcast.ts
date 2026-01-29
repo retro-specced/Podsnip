@@ -4,7 +4,7 @@ import { Readable } from 'stream';
 import { DatabaseService, Podcast, Episode } from './database';
 
 export class PodcastService {
-  constructor(private db: DatabaseService) {}
+  constructor(private db: DatabaseService) { }
 
   async addPodcastFeed(feedUrl: string): Promise<Podcast> {
     try {
@@ -29,18 +29,18 @@ export class PodcastService {
       for (const item of feedData.items) {
         // Get audio URL from enclosures array
         const audioUrl = this.getAudioUrl(item);
-        
+
         if (audioUrl) {
           // Episode artwork: use episode's image or fallback to podcast artwork
           const artworkUrl = item.image?.url || feedData.image?.url || '';
-          
+
           this.db.insertEpisode({
             podcast_id: podcastId,
             title: item.title || 'Untitled Episode',
             description: item.description || '',
             audio_url: audioUrl,
             artwork_url: artworkUrl,
-            duration: item.duration || 0,
+            duration: this.parseDuration(item),
             published_date: item.pubDate?.toISOString() || new Date().toISOString(),
             download_status: 'none',
             local_path: null,
@@ -84,14 +84,14 @@ export class PodcastService {
         if (audioUrl && !existingUrls.has(audioUrl)) {
           // Episode artwork: use episode's image or fallback to podcast artwork
           const artworkUrl = item.image?.url || feedData.image?.url || '';
-          
+
           this.db.insertEpisode({
             podcast_id: podcastId,
             title: item.title || 'Untitled Episode',
             description: item.description || '',
             audio_url: audioUrl,
             artwork_url: artworkUrl,
-            duration: item.duration || 0,
+            duration: this.parseDuration(item),
             published_date: item.pubDate?.toISOString() || new Date().toISOString(),
             download_status: 'none',
             local_path: null,
@@ -108,7 +108,7 @@ export class PodcastService {
     // Try multiple ways to get the audio URL
     if (item.enclosures && item.enclosures.length > 0) {
       // Find audio enclosure (audio/mpeg, audio/mp3, etc.)
-      const audioEnclosure = item.enclosures.find((enc: any) => 
+      const audioEnclosure = item.enclosures.find((enc: any) =>
         enc.type && enc.type.startsWith('audio/')
       );
       if (audioEnclosure?.url) {
@@ -117,13 +117,85 @@ export class PodcastService {
       // Fallback to first enclosure
       return item.enclosures[0]?.url || '';
     }
-    
+
     // Fallback to single enclosure object
     if (item.enclosure?.url) {
       return item.enclosure.url;
     }
-    
+
     return '';
+  }
+
+
+  private parseDuration(item: any): number {
+    // Debug logging to see what we're getting
+    console.log('=== Parsing duration for episode:', item.title);
+    console.log('item.duration:', item.duration, 'type:', typeof item.duration);
+    console.log('item["itunes:duration"]:', item['itunes:duration']);
+    console.log('All item keys with "duration":', Object.keys(item).filter(k => k.toLowerCase().includes('duration')));
+
+    // Try multiple ways to get duration from RSS feed
+
+    // 1. Check if duration is already a number (in seconds)
+    if (typeof item.duration === 'number' && item.duration > 0) {
+      console.log('✓ Found duration as number:', item.duration);
+      return Math.floor(item.duration);
+    }
+
+    // 2. Check iTunes duration (itunes:duration) - feedparser wraps it in an object
+    const itunesDuration = item['itunes:duration'];
+    if (itunesDuration) {
+      // feedparser returns { '@': {}, '#': 'actual_value' }
+      const durationValue = itunesDuration['#'] || itunesDuration;
+      const parsed = this.parseDurationString(durationValue);
+      console.log('✓ Found itunes:duration:', durationValue, '→', parsed, 'seconds');
+      if (parsed > 0) return parsed;
+    }
+
+    // 3. Check if duration is a string (HH:MM:SS or MM:SS format)
+    if (typeof item.duration === 'string') {
+      const parsed = this.parseDurationString(item.duration);
+      console.log('✓ Found duration as string:', item.duration, '→', parsed, 'seconds');
+      if (parsed > 0) return parsed;
+    }
+
+    // 4. Check enclosure length (file size in bytes) - not duration, skip this
+
+    // 5. Default to 0 if no duration found
+    console.log('✗ No duration found, defaulting to 0');
+    return 0;
+  }
+
+
+  private parseDurationString(duration: string | number): number {
+    if (typeof duration === 'number') {
+      return Math.floor(duration);
+    }
+
+    const str = String(duration).trim();
+
+    // If it's just a number string (seconds)
+    if (/^\d+$/.test(str)) {
+      return parseInt(str, 10);
+    }
+
+    // Parse HH:MM:SS or MM:SS format
+    const parts = str.split(':').map(p => parseInt(p, 10));
+
+    if (parts.length === 3) {
+      // HH:MM:SS
+      const [hours, minutes, seconds] = parts;
+      return hours * 3600 + minutes * 60 + seconds;
+    } else if (parts.length === 2) {
+      // MM:SS
+      const [minutes, seconds] = parts;
+      return minutes * 60 + seconds;
+    } else if (parts.length === 1) {
+      // Just seconds
+      return parts[0];
+    }
+
+    return 0;
   }
 
   private parseFeed(stream: Readable): Promise<any> {
