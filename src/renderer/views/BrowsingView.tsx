@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useAppStore } from '../store/appStore';
 import { Episode } from '../../shared/types';
+import AddPodcastModal from '../components/AddPodcastModal';
 import '../styles/BrowsingView.css';
 
+// Updated with Add Podcast button - v2
 function BrowsingView() {
   const {
     podcasts,
@@ -12,11 +14,13 @@ function BrowsingView() {
     setEpisodes,
     setCurrentEpisode,
     setCurrentState,
+    setPodcasts,
     setError,
   } = useAppStore();
 
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'longest' | 'shortest'>('newest');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showAddModal, setShowAddModal] = useState(false);
 
   useEffect(() => {
     // Select first podcast by default
@@ -39,18 +43,18 @@ function BrowsingView() {
 
   const handleDeletePodcast = async (podcastId: number, e: React.MouseEvent) => {
     e.stopPropagation();
-    
+
     if (!confirm('Are you sure you want to delete this podcast and all its episodes?')) {
       return;
     }
 
     try {
       await window.api.podcast.delete(podcastId);
-      
+
       // Reload podcasts
       const allPodcasts = await window.api.podcast.list();
       setPodcasts(allPodcasts);
-      
+
       // Clear current podcast if it was deleted
       if (currentPodcast?.id === podcastId) {
         setCurrentPodcast(null);
@@ -117,18 +121,18 @@ function BrowsingView() {
       .replace(/<\/div>/gi, ' ')
       .replace(/<\/li>/gi, ' ')
       .replace(/<\/h[1-6]>/gi, ' ');
-    
+
     // Create a temporary div to extract plain text
     const tmp = document.createElement('div');
     tmp.innerHTML = textWithSpaces;
     const text = (tmp.textContent || tmp.innerText || '')
       .replace(/\s+/g, ' ') // Replace multiple spaces with single space
       .trim();
-    
+
     if (text.length <= maxLength) {
       return text;
     }
-    
+
     // Truncate and add ellipsis
     return text.substring(0, maxLength).trim() + '...';
   };
@@ -137,7 +141,16 @@ function BrowsingView() {
     <div className="browsing-view">
       <div className="browsing-left">
         <div className="podcast-list">
-          <h2 className="section-title">Your Podcasts</h2>
+          <div className="podcast-list-header">
+            <h2 className="section-title">Your Podcasts</h2>
+            <button
+              className="add-podcast-button"
+              onClick={() => setShowAddModal(true)}
+              title="Add podcast"
+            >
+              +
+            </button>
+          </div>
           {podcasts.map((podcast) => (
             <div key={podcast.id} className="podcast-item-wrapper">
               <button
@@ -181,7 +194,7 @@ function BrowsingView() {
                 <div className="podcast-meta">
                   <h1 className="podcast-title-large">{currentPodcast.title}</h1>
                   <p className="podcast-author-large">{currentPodcast.author}</p>
-                  <p 
+                  <p
                     className="podcast-description"
                     dangerouslySetInnerHTML={{ __html: currentPodcast.description }}
                   />
@@ -233,6 +246,11 @@ function BrowsingView() {
           </div>
         )}
       </div>
+
+      <AddPodcastModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+      />
     </div>
   );
 }
