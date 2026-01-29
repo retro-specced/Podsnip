@@ -27,12 +27,15 @@ function PlayerView() {
   const [activeSegmentIndex, setActiveSegmentIndex] = useState(0);
   const [audioError, setAudioError] = useState<string | null>(null);
   const [isLoadingJump, setIsLoadingJump] = useState(false);
+  const [isLoadingEpisode, setIsLoadingEpisode] = useState(false);
+  const [isBuffering, setIsBuffering] = useState(false);
   const pendingSeekTimeRef = useRef<number | null>(null);
   const hasJumpedRef = useRef(false);
 
   useEffect(() => {
     if (currentEpisode) {
       setAudioError(null);
+      setIsLoadingEpisode(true); // Show loading screen
       loadTranscript();
 
       // Only reset currentTime if we're not in the middle of a jump from notes
@@ -215,7 +218,7 @@ function PlayerView() {
 
   return (
     <div className="player-view">
-      {isLoadingJump && (
+      {(isLoadingJump || isLoadingEpisode) && (
         <div className="jump-loading-overlay">
           <div className="jump-loading-content">
             <div className="spinner"></div>
@@ -254,6 +257,7 @@ function PlayerView() {
             onLoadedMetadata={() => {
               console.log('Audio loaded successfully');
               setAudioError(null);
+              setIsLoadingEpisode(false); // Hide loading screen when metadata is loaded
 
               // If there's a pending seek (from jump to podcast), perform it now
               if (pendingSeekTimeRef.current !== null && audioRef.current) {
@@ -270,6 +274,15 @@ function PlayerView() {
                 });
               }
             }}
+            onCanPlay={() => {
+              setIsBuffering(false); // Audio is ready to play
+            }}
+            onWaiting={() => {
+              setIsBuffering(true); // Audio is buffering
+            }}
+            onPlaying={() => {
+              setIsBuffering(false); // Audio started playing
+            }}
             crossOrigin="anonymous"
           />
 
@@ -283,8 +296,14 @@ function PlayerView() {
             <button className="control-button" onClick={() => handleSkip(-15)}>
               ⏮ 15s
             </button>
-            <button className="control-button-large" onClick={handlePlayPause}>
-              {isPlaying ? '⏸' : '▶️'}
+            <button className="control-button-large" onClick={handlePlayPause} disabled={isBuffering}>
+              {isBuffering ? (
+                <div className="spinner-small"></div>
+              ) : isPlaying ? (
+                '⏸'
+              ) : (
+                '▶️'
+              )}
             </button>
             <button className="control-button" onClick={() => handleSkip(15)}>
               15s ⏭
@@ -356,7 +375,7 @@ function PlayerView() {
           ) : (
             <div className="transcript-empty">
               <p>No transcript available yet.</p>
-              <p className="transcript-note">Click the button below to generate a transcript using Whisper AI.</p>
+              <p className="transcript-note">Click the button below to generate a transcript using local Whisper.</p>
               <button className="generate-transcript-button" onClick={startTranscription}>
                 Generate Transcript
               </button>

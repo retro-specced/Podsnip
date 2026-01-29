@@ -58,11 +58,9 @@ export interface Settings {
   skipForwardInterval: number;
   skipBackwardInterval: number;
   autoPlayNext: boolean;
-  transcriptionProvider: 'openai' | 'local';
-  openaiApiKey?: string;
 }
 
-export type AppState = 
+export type AppState =
   | 'onboarding'
   | 'browsing'
   | 'player'

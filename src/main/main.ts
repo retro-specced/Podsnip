@@ -2,13 +2,11 @@ import { app, BrowserWindow, ipcMain } from 'electron';
 import * as path from 'path';
 import { DatabaseService } from './services/database';
 import { PodcastService } from './services/podcast';
-import { TranscriptionService } from './services/transcription';
 import { LocalWhisperService } from './services/whisper-local';
 
 let mainWindow: BrowserWindow | null = null;
 let db: DatabaseService;
 let podcastService: PodcastService;
-let transcriptionService: TranscriptionService;
 let localWhisperService: LocalWhisperService;
 
 function createWindow() {
@@ -49,14 +47,7 @@ app.whenReady().then(async () => {
   const userDataPath = app.getPath('userData');
   db = new DatabaseService(path.join(userDataPath, 'podsnip.db'));
   podcastService = new PodcastService(db);
-  transcriptionService = new TranscriptionService();
   localWhisperService = new LocalWhisperService();
-
-  // Load API key from settings if it exists
-  const savedApiKey = db.getSetting('openai_api_key');
-  if (savedApiKey) {
-    transcriptionService.setApiKey(savedApiKey);
-  }
 
   createWindow();
 
@@ -109,16 +100,8 @@ ipcMain.handle('transcription:get', async (_, episodeId: number) => {
 });
 
 ipcMain.handle('transcription:create', async (_, episodeId: number, audioUrl: string) => {
-  // Check which transcription method to use
-  const useLocal = db.getSetting('transcription_method') === 'local';
-  
-  if (useLocal || !transcriptionService['apiKey']) {
-    // Use local whisper
-    return await localWhisperService.transcribeEpisode(episodeId, audioUrl, db);
-  } else {
-    // Use OpenAI API
-    return await transcriptionService.transcribeEpisode(episodeId, audioUrl, db);
-  }
+  // Always use local whisper.cpp
+  return await localWhisperService.transcribeEpisode(episodeId, audioUrl, db);
 });
 
 ipcMain.handle('transcription:check-local', async () => {
@@ -152,11 +135,6 @@ ipcMain.handle('settings:get', async (_, key: string) => {
 
 ipcMain.handle('settings:set', async (_, key: string, value: string) => {
   db.setSetting(key, value);
-  
-  // Update transcription service API key if it's being set
-  if (key === 'openai_api_key') {
-    transcriptionService.setApiKey(value);
-  }
 });
 
 // IPC Handlers for Playback State
