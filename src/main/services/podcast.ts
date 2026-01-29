@@ -31,11 +31,15 @@ export class PodcastService {
         const audioUrl = this.getAudioUrl(item);
         
         if (audioUrl) {
+          // Episode artwork: use episode's image or fallback to podcast artwork
+          const artworkUrl = item.image?.url || feedData.image?.url || '';
+          
           this.db.insertEpisode({
             podcast_id: podcastId,
             title: item.title || 'Untitled Episode',
             description: item.description || '',
             audio_url: audioUrl,
+            artwork_url: artworkUrl,
             duration: item.duration || 0,
             published_date: item.pubDate?.toISOString() || new Date().toISOString(),
             download_status: 'none',
@@ -78,11 +82,15 @@ export class PodcastService {
       for (const item of feedData.items) {
         const audioUrl = this.getAudioUrl(item);
         if (audioUrl && !existingUrls.has(audioUrl)) {
+          // Episode artwork: use episode's image or fallback to podcast artwork
+          const artworkUrl = item.image?.url || feedData.image?.url || '';
+          
           this.db.insertEpisode({
             podcast_id: podcastId,
             title: item.title || 'Untitled Episode',
             description: item.description || '',
             audio_url: audioUrl,
+            artwork_url: artworkUrl,
             duration: item.duration || 0,
             published_date: item.pubDate?.toISOString() || new Date().toISOString(),
             download_status: 'none',

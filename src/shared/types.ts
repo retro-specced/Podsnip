@@ -16,6 +16,7 @@ export interface Episode {
   title: string;
   description: string;
   audio_url: string;
+  artwork_url: string;
   duration: number;
   published_date: string;
   download_status: 'none' | 'downloading' | 'downloaded' | 'failed';

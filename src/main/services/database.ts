@@ -17,6 +17,7 @@ export interface Episode {
   title: string;
   description: string;
   audio_url: string;
+  artwork_url: string;
   duration: number;
   published_date: string;
   download_status: 'none' | 'downloading' | 'downloaded' | 'failed';
@@ -81,6 +82,7 @@ export class DatabaseService {
         title TEXT NOT NULL,
         description TEXT,
         audio_url TEXT NOT NULL,
+        artwork_url TEXT,
         duration INTEGER DEFAULT 0,
         published_date TEXT,
         download_status TEXT DEFAULT 'none',
@@ -88,6 +90,23 @@ export class DatabaseService {
         FOREIGN KEY (podcast_id) REFERENCES podcasts(id) ON DELETE CASCADE
       )
     `);
+
+    // Migration: Add artwork_url to existing episodes table if it doesn't exist
+    const columns = this.db.pragma('table_info(episodes)') as Array<{ name: string }>;
+    const hasArtworkUrl = columns.some((col) => col.name === 'artwork_url');
+    
+    if (!hasArtworkUrl) {
+      this.db.exec(`ALTER TABLE episodes ADD COLUMN artwork_url TEXT`);
+      
+      // Populate artwork_url from parent podcast for existing episodes
+      this.db.exec(`
+        UPDATE episodes
+        SET artwork_url = (
+          SELECT artwork_url FROM podcasts WHERE podcasts.id = episodes.podcast_id
+        )
+        WHERE artwork_url IS NULL
+      `);
+    }
 
     // Transcripts table
     this.db.exec(`
@@ -178,14 +197,15 @@ export class DatabaseService {
   // Episode methods
   insertEpisode(episode: Omit<Episode, 'id'>): number {
     const stmt = this.db.prepare(`
-      INSERT INTO episodes (podcast_id, title, description, audio_url, duration, published_date, download_status, local_path)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO episodes (podcast_id, title, description, audio_url, artwork_url, duration, published_date, download_status, local_path)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const result = stmt.run(
       episode.podcast_id,
       episode.title,
       episode.description,
       episode.audio_url,
+      episode.artwork_url,
       episode.duration,
       episode.published_date,
       episode.download_status,
@@ -237,18 +257,40 @@ export class DatabaseService {
     return result.lastInsertRowid as number;
   }
 
-  getAnnotations(episodeId?: number): Annotation[] {
+  getAnnotations(episodeId?: number): any[] {
     if (episodeId) {
       const stmt = this.db.prepare(`
-        SELECT a.* FROM annotations a
+        SELECT 
+          a.*,
+          t.text as transcript_text,
+          t.start_time,
+          t.end_time,
+          e.title as episode_title,
+          e.artwork_url as episode_artwork,
+          e.id as episode_id
+        FROM annotations a
         JOIN transcripts t ON a.transcript_id = t.id
+        JOIN episodes e ON t.episode_id = e.id
         WHERE t.episode_id = ?
         ORDER BY a.created_at DESC
       `);
-      return stmt.all(episodeId) as Annotation[];
+      return stmt.all(episodeId) as any[];
     } else {
-      const stmt = this.db.prepare('SELECT * FROM annotations ORDER BY created_at DESC');
-      return stmt.all() as Annotation[];
+      const stmt = this.db.prepare(`
+        SELECT 
+          a.*,
+          t.text as transcript_text,
+          t.start_time,
+          t.end_time,
+          e.title as episode_title,
+          e.artwork_url as episode_artwork,
+          e.id as episode_id
+        FROM annotations a
+        JOIN transcripts t ON a.transcript_id = t.id
+        JOIN episodes e ON t.episode_id = e.id
+        ORDER BY a.created_at DESC
+      `);
+      return stmt.all() as any[];
     }
   }
 

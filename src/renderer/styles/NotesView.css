@@ -76,6 +76,9 @@
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   transition: var(--transition);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
 }
 
 .note-card:hover {
@@ -84,16 +87,40 @@
   transform: translateY(-2px);
 }
 
-.note-header {
+.note-episode-info {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: var(--spacing-md);
+  gap: var(--spacing-md);
+  padding-bottom: var(--spacing-md);
+  border-bottom: 1px solid var(--border-color);
 }
 
-.note-date {
+.note-episode-artwork {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.note-episode-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.note-episode-title {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.note-timestamp {
   font-size: var(--font-size-xs);
-  color: var(--text-secondary);
+  color: var(--primary-color);
   font-weight: 600;
 }
 
@@ -103,6 +130,7 @@
   font-size: 16px;
   opacity: 0.6;
   transition: var(--transition);
+  flex-shrink: 0;
 }
 
 .note-delete:hover {
@@ -110,11 +138,48 @@
   background: var(--surface);
 }
 
+.note-transcript {
+  padding: var(--spacing-md);
+  background: var(--surface);
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--primary-color);
+}
+
+.note-transcript-label {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: var(--spacing-xs);
+}
+
+.note-transcript-text {
+  font-size: var(--font-size-sm);
+  line-height: 1.6;
+  color: var(--text-primary);
+  font-style: italic;
+}
+
 .note-content {
   font-size: var(--font-size-base);
   line-height: 1.6;
   color: var(--text-primary);
-  margin-bottom: var(--spacing-md);
+}
+
+.note-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--border-color);
+}
+
+.note-date {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  font-weight: 600;
 }
 
 .note-tags {

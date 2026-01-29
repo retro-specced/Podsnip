@@ -177,6 +177,18 @@
   margin-bottom: var(--spacing-md);
 }
 
+.podcast-description p {
+  margin: 0.5em 0;
+}
+
+.podcast-description p:first-child {
+  margin-top: 0;
+}
+
+.podcast-description p:last-child {
+  margin-bottom: 0;
+}
+
 .podcast-stats {
   font-size: var(--font-size-sm);
   color: var(--text-secondary);
@@ -256,6 +268,20 @@
   font-size: var(--font-size-sm);
   color: var(--text-secondary);
   line-height: 1.6;
+}
+
+.episode-description p {
+  margin: 0.25em 0;
+  display: inline;
+}
+
+.episode-description br {
+  content: " ";
+  display: inline;
+}
+
+.episode-description br::after {
+  content: " ";
 }
 
 .play-button {

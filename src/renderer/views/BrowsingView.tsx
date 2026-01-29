@@ -109,6 +109,30 @@ function BrowsingView() {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
+  const truncateHtml = (html: string, maxLength: number) => {
+    // Replace common HTML tags with spaces to preserve word boundaries
+    const textWithSpaces = html
+      .replace(/<\/p>/gi, ' ')
+      .replace(/<br\s*\/?>/gi, ' ')
+      .replace(/<\/div>/gi, ' ')
+      .replace(/<\/li>/gi, ' ')
+      .replace(/<\/h[1-6]>/gi, ' ');
+    
+    // Create a temporary div to extract plain text
+    const tmp = document.createElement('div');
+    tmp.innerHTML = textWithSpaces;
+    const text = (tmp.textContent || tmp.innerText || '')
+      .replace(/\s+/g, ' ') // Replace multiple spaces with single space
+      .trim();
+    
+    if (text.length <= maxLength) {
+      return text;
+    }
+    
+    // Truncate and add ellipsis
+    return text.substring(0, maxLength).trim() + '...';
+  };
+
   return (
     <div className="browsing-view">
       <div className="browsing-left">
@@ -157,7 +181,10 @@ function BrowsingView() {
                 <div className="podcast-meta">
                   <h1 className="podcast-title-large">{currentPodcast.title}</h1>
                   <p className="podcast-author-large">{currentPodcast.author}</p>
-                  <p className="podcast-description">{currentPodcast.description}</p>
+                  <p 
+                    className="podcast-description"
+                    dangerouslySetInnerHTML={{ __html: currentPodcast.description }}
+                  />
                   <div className="podcast-stats">
                     <span>{episodes.length} episodes</span>
                   </div>
@@ -189,7 +216,9 @@ function BrowsingView() {
                     <p className="episode-meta">
                       {formatDate(episode.published_date)} · {formatDuration(episode.duration)}
                     </p>
-                    <p className="episode-description">{episode.description.substring(0, 200)}...</p>
+                    <p className="episode-description">
+                      {truncateHtml(episode.description, 200)}
+                    </p>
                   </div>
                   <button className="play-button" onClick={() => handlePlayEpisode(episode)}>
                     ▶️ Play

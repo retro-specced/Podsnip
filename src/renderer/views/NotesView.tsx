@@ -3,9 +3,18 @@ import { useAppStore } from '../store/appStore';
 import { Annotation } from '../../shared/types';
 import '../styles/NotesView.css';
 
+interface EnrichedAnnotation extends Annotation {
+  transcript_text: string;
+  start_time: number;
+  end_time: number;
+  episode_title: string;
+  episode_artwork: string;
+  episode_id: number;
+}
+
 function NotesView() {
   const { annotations, setAnnotations, setError } = useAppStore();
-  const [filteredAnnotations, setFilteredAnnotations] = useState<Annotation[]>([]);
+  const [filteredAnnotations, setFilteredAnnotations] = useState<EnrichedAnnotation[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest'>('newest');
 
@@ -70,6 +79,17 @@ function NotesView() {
     });
   };
 
+  const formatTime = (seconds: number) => {
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = Math.floor(seconds % 60);
+    
+    if (hrs > 0) {
+      return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
   return (
     <div className="notes-view">
       <div className="notes-left">
@@ -101,8 +121,18 @@ function NotesView() {
           <div className="notes-list">
             {filteredAnnotations.map((annotation) => (
               <div key={annotation.id} className="note-card">
-                <div className="note-header">
-                  <div className="note-date">{formatDate(annotation.created_at)}</div>
+                <div className="note-episode-info">
+                  {annotation.episode_artwork && (
+                    <img
+                      src={annotation.episode_artwork}
+                      alt={annotation.episode_title}
+                      className="note-episode-artwork"
+                    />
+                  )}
+                  <div className="note-episode-details">
+                    <h4 className="note-episode-title">{annotation.episode_title}</h4>
+                    <div className="note-timestamp">{formatTime(annotation.start_time)}</div>
+                  </div>
                   <button
                     className="note-delete"
                     onClick={() => handleDeleteAnnotation(annotation.id)}
@@ -112,17 +142,25 @@ function NotesView() {
                   </button>
                 </div>
 
+                <div className="note-transcript">
+                  <div className="note-transcript-label">Transcript:</div>
+                  <div className="note-transcript-text">"{annotation.transcript_text}"</div>
+                </div>
+
                 <div className="note-content">{annotation.note_text}</div>
 
-                {annotation.tags && (
-                  <div className="note-tags">
-                    {annotation.tags.split(',').map((tag, index) => (
-                      <span key={index} className="note-tag">
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                )}
+                <div className="note-footer">
+                  <div className="note-date">{formatDate(annotation.created_at)}</div>
+                  {annotation.tags && (
+                    <div className="note-tags">
+                      {annotation.tags.split(',').map((tag, index) => (
+                        <span key={index} className="note-tag">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
           </div>

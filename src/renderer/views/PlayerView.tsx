@@ -186,9 +186,9 @@ function PlayerView() {
     <div className="player-view">
       <div className="player-left">
         <div className="player-container">
-          {currentEpisode && (
+          {currentEpisode && currentEpisode.artwork_url && (
             <img
-              src={currentEpisode.audio_url}
+              src={currentEpisode.artwork_url}
               alt="Episode artwork"
               className="player-artwork"
               onError={(e) => {
