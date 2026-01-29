@@ -126,13 +126,30 @@ Model sizes:
   }
 
   private findModel(): string | null {
-    const whisperDir = path.join(os.homedir(), 'whisper.cpp/models');
-    const models = ['ggml-base.bin', 'ggml-small.bin', 'ggml-tiny.bin', 'ggml-medium.bin'];
+    // Check multiple possible whisper.cpp locations
+    const possibleDirs = [
+      path.join(os.homedir(), 'whisper.cpp/models'),
+      path.join(os.homedir(), 'Documents/Projects/Models/whisper.cpp/models'),
+      '/usr/local/share/whisper.cpp/models',
+    ];
 
-    for (const model of models) {
-      const modelPath = path.join(whisperDir, model);
-      if (fs.existsSync(modelPath)) {
-        return modelPath;
+    const models = [
+      'ggml-base.bin',
+      'ggml-base.en.bin',
+      'ggml-small.bin',
+      'ggml-small.en.bin',
+      'ggml-tiny.bin',
+      'ggml-tiny.en.bin',
+      'ggml-medium.bin',
+      'ggml-medium.en.bin',
+    ];
+
+    for (const dir of possibleDirs) {
+      for (const model of models) {
+        const modelPath = path.join(dir, model);
+        if (fs.existsSync(modelPath)) {
+          return modelPath;
+        }
       }
     }
 
@@ -177,8 +194,7 @@ Model sizes:
       const whisper = spawn(this.whisperPath!, [
         '-m', modelPath,
         '-f', audioPath,
-        '--output-csv',
-        '--print-progress',
+        '--output-txt',
       ]);
 
       let output = '';
@@ -187,11 +203,15 @@ Model sizes:
       whisper.stdout.on('data', (data) => {
         const text = data.toString();
         output += text;
-        console.log('Whisper:', text.trim());
       });
 
       whisper.stderr.on('data', (data) => {
-        errorOutput += data.toString();
+        const text = data.toString();
+        errorOutput += text;
+        // Print progress to console (whisper outputs progress to stderr)
+        if (text.includes('progress') || text.includes('%')) {
+          console.log('Whisper:', text.trim());
+        }
       });
 
       whisper.on('close', (code) => {
@@ -209,32 +229,45 @@ Model sizes:
   }
 
   private parseAndStore(output: string, episodeId: number, db: DatabaseService): void {
-    const lines = output.split('\n').filter(line => line.trim());
-    let segmentIndex = 0;
+    try {
+      // Parse SRT format: [HH:MM:SS.mmm --> HH:MM:SS.mmm]   text
+      const lines = output.split('\n');
+      let segmentIndex = 0;
 
-    for (const line of lines) {
-      // Parse CSV format: start,end,text
-      const match = line.match(/^(\d+),(\d+),(.+)$/);
-      if (match) {
-        const [, startMs, endMs, text] = match;
-        const startTime = parseInt(startMs) / 1000; // Convert to seconds
-        const endTime = parseInt(endMs) / 1000;
-
-        if (text.trim()) {
-          db.insertTranscript({
-            episode_id: episodeId,
-            segment_index: segmentIndex++,
-            start_time: startTime,
-            end_time: endTime,
-            text: text.trim(),
-            confidence_score: 0.9, // Local whisper doesn't provide confidence
-          });
+      for (const line of lines) {
+        const match = line.match(/^\[(\d{2}):(\d{2}):(\d{2})\.(\d{3})\s*-->\s*(\d{2}):(\d{2}):(\d{2})\.(\d{3})\]\s*(.+)$/);
+        if (match) {
+          const [, startH, startM, startS, startMs, endH, endM, endS, endMs, text] = match;
+          
+          // Convert to seconds
+          const startTime = parseInt(startH) * 3600 + parseInt(startM) * 60 + parseInt(startS) + parseInt(startMs) / 1000;
+          const endTime = parseInt(endH) * 3600 + parseInt(endM) * 60 + parseInt(endS) + parseInt(endMs) / 1000;
+          
+          // Strip ANSI color codes and clean text
+          const cleanText = text.replace(/\u001b\[\d+(;\d+)*m/g, '').trim();
+          
+          if (cleanText) {
+            db.insertTranscript({
+              episode_id: episodeId,
+              segment_index: segmentIndex++,
+              start_time: startTime,
+              end_time: endTime,
+              text: cleanText,
+              confidence_score: 0.9,
+            });
+          }
         }
       }
-    }
 
-    if (segmentIndex === 0) {
-      throw new Error('No transcript segments were extracted');
+      if (segmentIndex === 0) {
+        console.error('No segments found in output:', output.substring(0, 500));
+        throw new Error('No transcript segments were extracted');
+      }
+
+      console.log(`Stored ${segmentIndex} transcript segments`);
+    } catch (error) {
+      console.error('Failed to parse whisper output:', output.substring(0, 500));
+      throw new Error(`Failed to parse transcription: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 }
