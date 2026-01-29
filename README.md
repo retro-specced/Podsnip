@@ -4,12 +4,11 @@ A modern podcast streaming and annotation app for Linux with automatic transcrip
 
 ## Features
 
-- 🎙️ Podcast feed management (RSS/Atom)
-- 🎵 Audio playback with controls
-- 📝 Automatic transcription with Whisper
-- ✍️ Synchronized transcript annotation
-- 📚 Notes library and organization
-- 🎨 Apple-inspired design
+- Podcast feed management (RSS/Atom)
+- Audio playback with controls
+- Automatic transcription with Whisper
+- Synchronized transcript annotation
+- Notes library and organization
 
 ## Development
 
