@@ -65,7 +65,12 @@ Model sizes:
 `;
   }
 
-  async transcribeEpisode(episodeId: number, audioUrl: string, db: DatabaseService): Promise<void> {
+  async transcribeEpisode(
+    episodeId: number,
+    audioUrl: string,
+    db: DatabaseService,
+    onProgress?: (progress: number, stage: string) => void
+  ): Promise<void> {
     if (!this.isAvailable()) {
       throw new Error('Whisper.cpp not installed. ' + this.getInstallInstructions());
     }
@@ -78,6 +83,7 @@ Model sizes:
       const existing = db.getTranscript(episodeId);
       if (existing.length > 0) {
         console.log('Transcript already exists for episode', episodeId);
+        if (onProgress) onProgress(100, 'Complete (already transcribed)');
         return;
       }
 
@@ -90,6 +96,7 @@ Model sizes:
       console.log(`Using model: ${modelPath}`);
 
       // Download audio file
+      if (onProgress) onProgress(5, 'Downloading audio');
       console.log('Downloading audio file...');
       const audioResponse = await axios.get(audioUrl, {
         responseType: 'arraybuffer',
@@ -100,20 +107,28 @@ Model sizes:
       fs.writeFileSync(tempAudioPath, Buffer.from(audioResponse.data));
 
       // Convert to WAV format (required by whisper.cpp)
+      if (onProgress) onProgress(15, 'Converting audio format');
       console.log('Converting audio to WAV format...');
       tempWavPath = await this.convertToWav(tempAudioPath);
 
       // Run whisper.cpp transcription
+      if (onProgress) onProgress(20, 'Transcribing audio');
       console.log('Transcribing audio (this may take a while)...');
-      const transcript = await this.runWhisper(tempWavPath, modelPath);
+      const transcript = await this.runWhisper(tempWavPath, modelPath, (progress, stage) => {
+        // Map whisper progress (0-100) to our range (20-95)
+        const mappedProgress = 20 + (progress * 0.75);
+        if (onProgress) onProgress(Math.round(mappedProgress), stage);
+      });
 
       // Parse and store results
+      if (onProgress) onProgress(95, 'Saving transcript');
       this.parseAndStore(transcript, episodeId, db);
 
       // Cleanup
       if (tempAudioPath && fs.existsSync(tempAudioPath)) fs.unlinkSync(tempAudioPath);
       if (tempWavPath && fs.existsSync(tempWavPath)) fs.unlinkSync(tempWavPath);
 
+      if (onProgress) onProgress(100, 'Complete');
       console.log(`Local transcription complete for episode ${episodeId}`);
     } catch (error: any) {
       // Cleanup on error
@@ -159,7 +174,7 @@ Model sizes:
   private convertToWav(inputPath: string): Promise<string> {
     return new Promise((resolve, reject) => {
       const outputPath = inputPath.replace(/\.\w+$/, '.wav');
-      
+
       const ffmpeg = spawn('ffmpeg', [
         '-i', inputPath,
         '-ar', '16000', // 16kHz sample rate
@@ -189,32 +204,108 @@ Model sizes:
     });
   }
 
-  private runWhisper(audioPath: string, modelPath: string): Promise<string> {
+  private runWhisper(audioPath: string, modelPath: string, onProgress?: (progress: number, stage: string) => void): Promise<string> {
     return new Promise((resolve, reject) => {
+      const startTime = Date.now();
+      let lastProgressUpdate = Date.now();
+      let currentProgress = 0;
+
       const whisper = spawn(this.whisperPath!, [
         '-m', modelPath,
         '-f', audioPath,
         '--output-txt',
+        '--print-progress',  // Enable progress output
       ]);
 
       let output = '';
       let errorOutput = '';
 
+      // Helper function to format time remaining
+      const formatTimeRemaining = (progress: number): string => {
+        if (progress <= 0 || progress >= 100) return '';
+
+        const elapsedMs = Date.now() - startTime;
+        const elapsedMinutes = elapsedMs / 60000;
+
+        // Estimate total time based on current progress
+        const estimatedTotalMinutes = (elapsedMinutes / progress) * 100;
+        const remainingMinutes = Math.max(0, estimatedTotalMinutes - elapsedMinutes);
+
+        if (remainingMinutes < 1) {
+          const seconds = Math.ceil(remainingMinutes * 60);
+          return `${seconds} second${seconds !== 1 ? 's' : ''} remaining`;
+        } else {
+          const minutes = Math.ceil(remainingMinutes);
+          return `${minutes} minute${minutes !== 1 ? 's' : ''} remaining`;
+        }
+      };
+
+      // Simulate progress if no real progress is detected
+      const progressInterval = setInterval(() => {
+        const elapsed = Date.now() - lastProgressUpdate;
+        // If no progress update in 2 seconds, increment slowly
+        if (elapsed > 2000 && currentProgress < 95) {
+          currentProgress = Math.min(currentProgress + 1, 95);
+          if (onProgress) {
+            const timeMsg = formatTimeRemaining(currentProgress);
+            onProgress(currentProgress, `Transcribing audio${timeMsg ? ' - ' + timeMsg : ''}`);
+          }
+          lastProgressUpdate = Date.now();
+        }
+      }, 2000);
+
       whisper.stdout.on('data', (data) => {
         const text = data.toString();
         output += text;
+        console.log('Whisper stdout:', text.trim());
       });
 
       whisper.stderr.on('data', (data) => {
         const text = data.toString();
         errorOutput += text;
-        // Print progress to console (whisper outputs progress to stderr)
-        if (text.includes('progress') || text.includes('%')) {
-          console.log('Whisper:', text.trim());
+
+        // Try multiple progress patterns
+        // Pattern 1: "progress =  45%"
+        let progressMatch = text.match(/progress\s*=\s*(\d+)%/);
+
+        // Pattern 2: "[00:01:23.456 --> 00:01:25.678]" - estimate from timestamps
+        if (!progressMatch) {
+          const timestampMatch = text.match(/\[(\d{2}):(\d{2}):(\d{2})/);
+          if (timestampMatch) {
+            // Rough estimation: assume 1 hour audio = 100% progress
+            const hours = parseInt(timestampMatch[1]);
+            const minutes = parseInt(timestampMatch[2]);
+            const seconds = parseInt(timestampMatch[3]);
+            const totalSeconds = hours * 3600 + minutes * 60 + seconds;
+            // Assume average podcast is 30-60 minutes
+            const estimatedProgress = Math.min(95, Math.floor((totalSeconds / 1800) * 100));
+            if (estimatedProgress > currentProgress) {
+              currentProgress = estimatedProgress;
+              if (onProgress) {
+                const timeMsg = formatTimeRemaining(currentProgress);
+                onProgress(currentProgress, `Transcribing audio${timeMsg ? ' - ' + timeMsg : ''}`);
+              }
+              lastProgressUpdate = Date.now();
+            }
+          }
+        } else {
+          const progress = parseInt(progressMatch[1]);
+          if (progress > currentProgress) {
+            currentProgress = progress;
+            if (onProgress) {
+              const timeMsg = formatTimeRemaining(progress);
+              onProgress(progress, `Transcribing audio${timeMsg ? ' - ' + timeMsg : ''}`);
+            }
+            lastProgressUpdate = Date.now();
+          }
         }
+
+        // Log all stderr output for debugging
+        console.log('Whisper stderr:', text.trim());
       });
 
       whisper.on('close', (code) => {
+        clearInterval(progressInterval);
         if (code === 0) {
           resolve(output);
         } else {
@@ -223,6 +314,7 @@ Model sizes:
       });
 
       whisper.on('error', (err) => {
+        clearInterval(progressInterval);
         reject(new Error(`Failed to run whisper: ${err.message}`));
       });
     });
@@ -238,14 +330,14 @@ Model sizes:
         const match = line.match(/^\[(\d{2}):(\d{2}):(\d{2})\.(\d{3})\s*-->\s*(\d{2}):(\d{2}):(\d{2})\.(\d{3})\]\s*(.+)$/);
         if (match) {
           const [, startH, startM, startS, startMs, endH, endM, endS, endMs, text] = match;
-          
+
           // Convert to seconds
           const startTime = parseInt(startH) * 3600 + parseInt(startM) * 60 + parseInt(startS) + parseInt(startMs) / 1000;
           const endTime = parseInt(endH) * 3600 + parseInt(endM) * 60 + parseInt(endS) + parseInt(endMs) / 1000;
-          
+
           // Strip ANSI color codes and clean text
           const cleanText = text.replace(/\u001b\[\d+(;\d+)*m/g, '').trim();
-          
+
           if (cleanText) {
             db.insertTranscript({
               episode_id: episodeId,

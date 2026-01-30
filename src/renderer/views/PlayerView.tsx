@@ -24,6 +24,8 @@ function PlayerView() {
   const audioRef = useRef<HTMLAudioElement>(null);
   const transcriptContainerRef = useRef<HTMLDivElement>(null);
   const [isTranscribing, setIsTranscribing] = useState(false);
+  const [transcriptionProgress, setTranscriptionProgress] = useState(0);
+  const [transcriptionStage, setTranscriptionStage] = useState('');
   const [activeSegmentIndex, setActiveSegmentIndex] = useState(0);
   const [audioError, setAudioError] = useState<string | null>(null);
   const [isLoadingJump, setIsLoadingJump] = useState(false);
@@ -72,6 +74,19 @@ function PlayerView() {
     }
   }, [jumpToTime]);
 
+  // Listen for transcription progress updates
+  useEffect(() => {
+    window.api.transcription.onProgress((data) => {
+      if (currentEpisode && data.episodeId === currentEpisode.id) {
+        setTranscriptionProgress(data.progress);
+        setTranscriptionStage(data.stage);
+      }
+    });
+
+    return () => {
+      window.api.transcription.removeProgressListener();
+    };
+  }, [currentEpisode]);
 
   useEffect(() => {
     // Auto-scroll to active segment
@@ -100,6 +115,8 @@ function PlayerView() {
     if (!currentEpisode) return;
 
     setIsTranscribing(true);
+    setTranscriptionProgress(0);
+    setTranscriptionStage('Starting transcription');
     setError(null);
 
     try {
@@ -112,6 +129,8 @@ function PlayerView() {
       setError(error instanceof Error ? error.message : 'Failed to transcribe episode');
     } finally {
       setIsTranscribing(false);
+      setTranscriptionProgress(0);
+      setTranscriptionStage('');
     }
   };
 
@@ -356,7 +375,19 @@ function PlayerView() {
           {isTranscribing ? (
             <div className="transcript-loading">
               <div className="spinner"></div>
-              <p>Generating transcript... This may take a few minutes.</p>
+              <p>Generating transcript...</p>
+              <div className="transcription-progress">
+                <div className="progress-bar-container">
+                  <div
+                    className="progress-bar-fill"
+                    style={{ width: `${transcriptionProgress}%` }}
+                  ></div>
+                </div>
+                <div className="progress-info">
+                  <span className="progress-percentage">{transcriptionProgress}%</span>
+                  <span className="progress-stage">{transcriptionStage}</span>
+                </div>
+              </div>
             </div>
           ) : transcripts.length > 0 ? (
             <div className="transcript-segments">

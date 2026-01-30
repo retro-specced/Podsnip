@@ -86,6 +86,8 @@ declare global {
         get: (episodeId: number) => Promise<Transcript[]>;
         create: (episodeId: number, audioUrl: string) => Promise<void>;
         checkLocal: () => Promise<{ available: boolean; instructions: string }>;
+        onProgress: (callback: (data: { episodeId: number; progress: number; stage: string }) => void) => void;
+        removeProgressListener: () => void;
       };
       annotation: {
         create: (data: { transcriptId: number; noteText: string; tags?: string[] }) => Promise<number>;

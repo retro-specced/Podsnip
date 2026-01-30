@@ -22,6 +22,12 @@ contextBridge.exposeInMainWorld('api', {
     get: (episodeId: number) => ipcRenderer.invoke('transcription:get', episodeId),
     create: (episodeId: number, audioUrl: string) => ipcRenderer.invoke('transcription:create', episodeId, audioUrl),
     checkLocal: () => ipcRenderer.invoke('transcription:check-local'),
+    onProgress: (callback: (data: { episodeId: number; progress: number; stage: string }) => void) => {
+      ipcRenderer.on('transcription:progress', (_, data) => callback(data));
+    },
+    removeProgressListener: () => {
+      ipcRenderer.removeAllListeners('transcription:progress');
+    },
   },
 
   // Annotation API

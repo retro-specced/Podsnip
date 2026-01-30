@@ -99,9 +99,12 @@ ipcMain.handle('transcription:get', async (_, episodeId: number) => {
   return await db.getTranscript(episodeId);
 });
 
-ipcMain.handle('transcription:create', async (_, episodeId: number, audioUrl: string) => {
-  // Always use local whisper.cpp
-  return await localWhisperService.transcribeEpisode(episodeId, audioUrl, db);
+ipcMain.handle('transcription:create', async (event, episodeId: number, audioUrl: string) => {
+  // Always use local whisper.cpp with progress tracking
+  return await localWhisperService.transcribeEpisode(episodeId, audioUrl, db, (progress, stage) => {
+    // Send progress update to renderer
+    event.sender.send('transcription:progress', { episodeId, progress, stage });
+  });
 });
 
 ipcMain.handle('transcription:check-local', async () => {
