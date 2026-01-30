@@ -111,10 +111,19 @@ Model sizes:
       console.log('Converting audio to WAV format...');
       tempWavPath = await this.convertToWav(tempAudioPath);
 
+      // Get audio duration for accurate progress tracking
+      let audioDuration = 0;
+      try {
+        audioDuration = await this.getAudioDuration(tempWavPath);
+        console.log(`Audio duration: ${audioDuration} seconds`);
+      } catch (err) {
+        console.warn('Could not get audio duration, using fallback progress');
+      }
+
       // Run whisper.cpp transcription
       if (onProgress) onProgress(20, 'Transcribing audio');
       console.log('Transcribing audio (this may take a while)...');
-      const transcript = await this.runWhisper(tempWavPath, modelPath, (progress, stage) => {
+      const transcript = await this.runWhisper(tempWavPath, modelPath, audioDuration, (progress, stage) => {
         // Map whisper progress (0-100) to our range (20-95)
         const mappedProgress = 20 + (progress * 0.75);
         if (onProgress) onProgress(Math.round(mappedProgress), stage);
@@ -204,11 +213,58 @@ Model sizes:
     });
   }
 
-  private runWhisper(audioPath: string, modelPath: string, onProgress?: (progress: number, stage: string) => void): Promise<string> {
+  private getAudioDuration(audioPath: string): Promise<number> {
+    return new Promise((resolve, reject) => {
+      const ffprobe = spawn('ffprobe', [
+        '-v', 'error',
+        '-show_entries', 'format=duration',
+        '-of', 'default=noprint_wrappers=1:nokey=1',
+        audioPath
+      ]);
+
+      let output = '';
+      let errorOutput = '';
+
+      ffprobe.stdout.on('data', (data) => {
+        output += data.toString();
+      });
+
+      ffprobe.stderr.on('data', (data) => {
+        errorOutput += data.toString();
+      });
+
+      ffprobe.on('close', (code) => {
+        if (code === 0) {
+          const duration = parseFloat(output.trim());
+          if (!isNaN(duration)) {
+            resolve(duration);
+          } else {
+            reject(new Error('Failed to parse audio duration'));
+          }
+        } else {
+          reject(new Error(`FFprobe failed: ${errorOutput}`));
+        }
+      });
+
+      ffprobe.on('error', (err) => {
+        reject(new Error(`FFprobe error: ${err.message}`));
+      });
+    });
+  }
+
+  private runWhisper(
+    audioPath: string,
+    modelPath: string,
+    audioDuration: number,
+    onProgress?: (progress: number, stage: string) => void
+  ): Promise<string> {
     return new Promise((resolve, reject) => {
       const startTime = Date.now();
       let lastProgressUpdate = Date.now();
       let currentProgress = 0;
+      let lastReportedProgress = 0;
+      let hasReached100 = false;
+      let lastTimestampSeconds = 0;
 
       const whisper = spawn(this.whisperPath!, [
         '-m', modelPath,
@@ -220,35 +276,47 @@ Model sizes:
       let output = '';
       let errorOutput = '';
 
-      // Helper function to format time remaining
+      // Helper function to format time remaining based on actual elapsed and progress
       const formatTimeRemaining = (progress: number): string => {
         if (progress <= 0 || progress >= 100) return '';
 
+        // Use actual elapsed time for more accurate estimate
         const elapsedMs = Date.now() - startTime;
-        const elapsedMinutes = elapsedMs / 60000;
+        const elapsedSeconds = elapsedMs / 1000;
 
-        // Estimate total time based on current progress
-        const estimatedTotalMinutes = (elapsedMinutes / progress) * 100;
-        const remainingMinutes = Math.max(0, estimatedTotalMinutes - elapsedMinutes);
+        if (progress >= 85) {
+          return 'finishing up';
+        }
 
-        if (remainingMinutes < 1) {
-          const seconds = Math.ceil(remainingMinutes * 60);
-          return `${seconds} second${seconds !== 1 ? 's' : ''} remaining`;
+        // Estimate remaining time
+        const estimatedTotalSeconds = (elapsedSeconds / progress) * 100;
+        const remainingSeconds = Math.max(0, estimatedTotalSeconds - elapsedSeconds);
+
+        if (remainingSeconds < 60) {
+          const secs = Math.ceil(remainingSeconds);
+          return secs <= 10 ? 'almost done' : `${secs} seconds remaining`;
         } else {
-          const minutes = Math.ceil(remainingMinutes);
+          const minutes = Math.ceil(remainingSeconds / 60);
           return `${minutes} minute${minutes !== 1 ? 's' : ''} remaining`;
         }
       };
 
-      // Simulate progress if no real progress is detected
+      // Simulate progress if no real progress is detected (less aggressive now)
       const progressInterval = setInterval(() => {
         const elapsed = Date.now() - lastProgressUpdate;
-        // If no progress update in 2 seconds, increment slowly
-        if (elapsed > 2000 && currentProgress < 95) {
-          currentProgress = Math.min(currentProgress + 1, 95);
-          if (onProgress) {
-            const timeMsg = formatTimeRemaining(currentProgress);
-            onProgress(currentProgress, `Transcribing audio${timeMsg ? ' - ' + timeMsg : ''}`);
+
+        // Only use fallback if we're stuck for a long time
+        if (elapsed > 5000 && currentProgress < 99) {
+          // Small increment to show we're still working
+          const incrementAmount = currentProgress >= 90 ? 0.5 : 0.3;
+          currentProgress = Math.min(currentProgress + incrementAmount, 99);
+
+          if (Math.floor(currentProgress) > Math.floor(lastReportedProgress)) {
+            lastReportedProgress = currentProgress;
+            if (onProgress) {
+              const timeMsg = formatTimeRemaining(currentProgress);
+              onProgress(Math.floor(currentProgress), `Transcribing audio${timeMsg ? ' - ' + timeMsg : ''}`);
+            }
           }
           lastProgressUpdate = Date.now();
         }
@@ -258,29 +326,27 @@ Model sizes:
         const text = data.toString();
         output += text;
         console.log('Whisper stdout:', text.trim());
-      });
 
-      whisper.stderr.on('data', (data) => {
-        const text = data.toString();
-        errorOutput += text;
+        // Parse timestamps from stdout for accurate progress
+        // Format: [00:01:23.456 --> 00:01:25.678]
+        const timestampMatch = text.match(/\[(\d{2}):(\d{2}):(\d{2})\.(\d{3})\s*-->\s*(\d{2}):(\d{2}):(\d{2})\.(\d{3})\]/);
+        if (timestampMatch && audioDuration > 0) {
+          // Use the end timestamp for progress
+          const endHours = parseInt(timestampMatch[5]);
+          const endMinutes = parseInt(timestampMatch[6]);
+          const endSeconds = parseInt(timestampMatch[7]);
+          const endMs = parseInt(timestampMatch[8]);
+          const endTotalSeconds = endHours * 3600 + endMinutes * 60 + endSeconds + endMs / 1000;
 
-        // Try multiple progress patterns
-        // Pattern 1: "progress =  45%"
-        let progressMatch = text.match(/progress\s*=\s*(\d+)%/);
+          if (endTotalSeconds > lastTimestampSeconds) {
+            lastTimestampSeconds = endTotalSeconds;
 
-        // Pattern 2: "[00:01:23.456 --> 00:01:25.678]" - estimate from timestamps
-        if (!progressMatch) {
-          const timestampMatch = text.match(/\[(\d{2}):(\d{2}):(\d{2})/);
-          if (timestampMatch) {
-            // Rough estimation: assume 1 hour audio = 100% progress
-            const hours = parseInt(timestampMatch[1]);
-            const minutes = parseInt(timestampMatch[2]);
-            const seconds = parseInt(timestampMatch[3]);
-            const totalSeconds = hours * 3600 + minutes * 60 + seconds;
-            // Assume average podcast is 30-60 minutes
-            const estimatedProgress = Math.min(95, Math.floor((totalSeconds / 1800) * 100));
-            if (estimatedProgress > currentProgress) {
-              currentProgress = estimatedProgress;
+            // Calculate progress based on actual audio duration
+            const timestampProgress = Math.min(99, Math.floor((endTotalSeconds / audioDuration) * 100));
+
+            if (timestampProgress > currentProgress) {
+              currentProgress = timestampProgress;
+              lastReportedProgress = currentProgress;
               if (onProgress) {
                 const timeMsg = formatTimeRemaining(currentProgress);
                 onProgress(currentProgress, `Transcribing audio${timeMsg ? ' - ' + timeMsg : ''}`);
@@ -288,15 +354,29 @@ Model sizes:
               lastProgressUpdate = Date.now();
             }
           }
-        } else {
-          const progress = parseInt(progressMatch[1]);
-          if (progress > currentProgress) {
-            currentProgress = progress;
-            if (onProgress) {
-              const timeMsg = formatTimeRemaining(progress);
-              onProgress(progress, `Transcribing audio${timeMsg ? ' - ' + timeMsg : ''}`);
+        }
+      });
+
+      whisper.stderr.on('data', (data) => {
+        const text = data.toString();
+        errorOutput += text;
+
+        // Check for whisper's own progress callback (as backup)
+        const progressMatch = text.match(/progress\s*=\s*(\d+)%/);
+        if (progressMatch) {
+          const whisperProgress = parseInt(progressMatch[1]);
+
+          // When whisper reports 100%, update to 95% and let it finish
+          if (whisperProgress >= 100) {
+            if (!hasReached100) {
+              hasReached100 = true;
+              currentProgress = 95;
+              lastReportedProgress = currentProgress;
+              if (onProgress) {
+                onProgress(95, 'Transcribing audio - finishing up');
+              }
+              lastProgressUpdate = Date.now();
             }
-            lastProgressUpdate = Date.now();
           }
         }
 

@@ -56,6 +56,19 @@ function PlayerView() {
     }
   }, [currentEpisode]);
 
+  // Save playback state periodically
+  useEffect(() => {
+    if (!currentEpisode) return;
+
+    const interval = setInterval(() => {
+      if (currentTime > 0) {
+        window.api.playback.save(currentEpisode.id, currentTime, playbackSpeed);
+      }
+    }, 5000); // Save every 5 seconds
+
+    return () => clearInterval(interval);
+  }, [currentEpisode, currentTime, playbackSpeed]);
+
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.playbackRate = playbackSpeed;
