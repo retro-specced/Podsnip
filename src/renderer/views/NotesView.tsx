@@ -38,6 +38,7 @@ function NotesView() {
   const [sortBy, setSortBy] = useState<'newest' | 'oldest'>('newest');
   const [selectedPodcastId, setSelectedPodcastId] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<'masonry' | 'podcasts'>(selectedPodcastId ? 'podcasts' : 'masonry');
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
   // Sync viewMode if podcast is selected via other means, but mainly controlled by user
   useEffect(() => {
@@ -52,7 +53,7 @@ function NotesView() {
 
   useEffect(() => {
     filterAndSortAnnotations();
-  }, [annotations, searchQuery, sortBy]);
+  }, [annotations, searchQuery, sortBy, selectedTags]);
 
   const loadAnnotations = async () => {
     try {
@@ -76,6 +77,16 @@ function NotesView() {
       );
     }
 
+    // Filter by selected tags
+    if (selectedTags.length > 0) {
+      filtered = filtered.filter((annotation) => {
+        if (!annotation.tags) return false;
+        const noteTags = annotation.tags.split(',').map(t => t.trim());
+        // AND logic: Note must contain ALL selected tags
+        return selectedTags.every(tag => noteTags.includes(tag));
+      });
+    }
+
     // Sort
     if (sortBy === 'newest') {
       filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
@@ -84,6 +95,28 @@ function NotesView() {
     }
 
     setFilteredAnnotations(filtered);
+  };
+
+  // Extract unique tags
+  const uniqueTags = useMemo(() => {
+    const allTags = new Set<string>();
+    annotations.forEach(a => {
+      if (a.tags) {
+        a.tags.split(',').forEach(t => {
+          const trimmed = t.trim();
+          if (trimmed) allTags.add(trimmed);
+        });
+      }
+    });
+    return Array.from(allTags).sort();
+  }, [annotations]);
+
+  const toggleTag = (tag: string) => {
+    setSelectedTags(prev =>
+      prev.includes(tag)
+        ? prev.filter(t => t !== tag)
+        : [...prev, tag]
+    );
   };
 
   // Group annotations by podcast
@@ -380,6 +413,29 @@ function NotesView() {
             <span className="stat-item">{annotations.length} Notes</span>
           </div>
         </div>
+
+        {/* Tag Filter Bar */}
+        {uniqueTags.length > 0 && (
+          <div className="tags-filter-bar">
+            <div className="tags-filter-scroll">
+              <button
+                className={`filter-tag-chip ${selectedTags.length === 0 ? 'active' : ''}`}
+                onClick={() => setSelectedTags([])}
+              >
+                All
+              </button>
+              {uniqueTags.map(tag => (
+                <button
+                  key={tag}
+                  className={`filter-tag-chip ${selectedTags.includes(tag) ? 'active' : ''}`}
+                  onClick={() => toggleTag(tag)}
+                >
+                  #{tag}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="notes-content-area">
