@@ -5,6 +5,7 @@ interface HistorySnapshot {
   view: AppState;
   podcast: Podcast | null;
   episode: Episode | null;
+  scrollPosition?: number;
 }
 
 interface AppStore {
@@ -22,10 +23,14 @@ interface AppStore {
   canGoBack: () => boolean;
   canGoForward: () => boolean;
 
-  // ... (rest of store)
+  // Snapshot Update
+  updateCurrentSnapshot: (updates: Partial<HistorySnapshot>) => void;
+  // Scroll Restoration
+  restoredScrollPosition: number | null;
+  setRestoredScrollPosition: (pos: number | null) => void;
 
-  // Replaced simple setters with internal logic or deprecated them for navigation purposes
-  setCurrentState: (state: AppState) => void; // Keeping for compatibility but internally it should use navigation logic if possible
+  // Compatibility / Simple Setters
+  setCurrentState: (state: AppState) => void;
 
   // Podcasts
   podcasts: Podcast[];
@@ -40,6 +45,7 @@ interface AppStore {
   currentEpisode: Episode | null;
   setEpisodes: (episodes: Episode[]) => void;
   setCurrentEpisode: (episode: Episode | null) => void;
+
   // Transcripts
   transcripts: Transcript[];
   setTranscripts: (transcripts: Transcript[]) => void;
@@ -54,7 +60,7 @@ interface AppStore {
   isPlaying: boolean;
   currentTime: number;
   playbackSpeed: number;
-  jumpToTime: number | null; // Used for jumping from notes
+  jumpToTime: number | null;
   setIsPlaying: (playing: boolean) => void;
   setCurrentTime: (time: number) => void;
   setPlaybackSpeed: (speed: number) => void;
@@ -66,13 +72,13 @@ interface AppStore {
   setIsLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
 
-  // Selected segments for annotation (supports multi-selection)
+  // Selected segments
   selectedSegments: Transcript[];
   setSelectedSegments: (segments: Transcript[]) => void;
   toggleSegmentSelection: (segment: Transcript) => void;
   clearSelectedSegments: () => void;
 
-  // Toast notifications
+  // Toast
   showSaveToast: boolean;
   setShowSaveToast: (show: boolean) => void;
 }
@@ -80,14 +86,14 @@ interface AppStore {
 export const useAppStore = create<AppStore>((set, get) => ({
   // Initial state
   currentState: 'onboarding',
-  history: [{ view: 'onboarding', podcast: null, episode: null }],
+  history: [{ view: 'onboarding', podcast: null, episode: null, scrollPosition: 0 }],
   historyIndex: 0,
+  restoredScrollPosition: null,
 
   podcasts: [],
   currentPodcast: null,
   episodes: [],
   currentEpisode: null,
-  // ... (rest of initial state)
   transcripts: [],
   annotations: [],
   currentAnnotation: null,
@@ -101,13 +107,15 @@ export const useAppStore = create<AppStore>((set, get) => ({
   showSaveToast: false,
 
   // Actions
+  updateCurrentSnapshot: (updates) => set((state) => {
+    const newHistory = [...state.history];
+    newHistory[state.historyIndex] = { ...newHistory[state.historyIndex], ...updates };
+    return { history: newHistory };
+  }),
 
-  // Unified Navigation
+  setRestoredScrollPosition: (pos) => set({ restoredScrollPosition: pos }),
+
   navigateToView: (view, context = {}) => set((state) => {
-    // If we are just updating the current view with SAME context, maybe replace?
-    // But usually navigateToView implies a user action.
-
-    // Construct new snapshot
     const newSnapshot: HistorySnapshot = {
       view,
       podcast: context.podcastId !== undefined
@@ -116,22 +124,20 @@ export const useAppStore = create<AppStore>((set, get) => ({
       episode: context.episodeId !== undefined
         ? (state.episodes.find(e => e.id === context.episodeId) || null)
         : state.currentEpisode,
+      scrollPosition: 0,
     };
 
-    // If replace is true, replace current history entry
     if (context.replace) {
       const newHistory = [...state.history];
       newHistory[state.historyIndex] = newSnapshot;
       return {
         currentState: view,
         history: newHistory,
-        // Also update context if provided
         currentPodcast: newSnapshot.podcast,
         currentEpisode: newSnapshot.episode,
       };
     }
 
-    // Otherwise push new entry and truncate forward history
     const newHistory = state.history.slice(0, state.historyIndex + 1);
     newHistory.push(newSnapshot);
 
@@ -139,7 +145,6 @@ export const useAppStore = create<AppStore>((set, get) => ({
       currentState: view,
       history: newHistory,
       historyIndex: newHistory.length - 1,
-      // Update context
       currentPodcast: newSnapshot.podcast,
       currentEpisode: newSnapshot.episode,
     };
@@ -154,6 +159,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
         currentState: snapshot.view,
         currentPodcast: snapshot.podcast,
         currentEpisode: snapshot.episode,
+        restoredScrollPosition: snapshot.scrollPosition || 0,
       };
     }
     return {};
@@ -168,6 +174,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
         currentState: snapshot.view,
         currentPodcast: snapshot.podcast,
         currentEpisode: snapshot.episode,
+        restoredScrollPosition: snapshot.scrollPosition || 0,
       };
     }
     return {};
@@ -176,10 +183,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
   canGoBack: () => get().historyIndex > 0,
   canGoForward: () => get().historyIndex < get().history.length - 1,
 
-  // Compatibility / Simple Setters
   setCurrentState: (state) => get().navigateToView(state),
 
-  // ... (rest of setters)
   setPodcasts: (podcasts) => set({ podcasts }),
   setCurrentPodcast: (podcast) => set({ currentPodcast: podcast }),
   addPodcast: (podcast) => set((state) => ({ podcasts: [...state.podcasts, podcast] })),
@@ -190,8 +195,6 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
   setEpisodes: (episodes) => set({ episodes }),
   setCurrentEpisode: (episode) => set({ currentEpisode: episode }),
-  // ...
-
 
   setTranscripts: (transcripts) => set({ transcripts }),
 
@@ -212,12 +215,10 @@ export const useAppStore = create<AppStore>((set, get) => ({
     if (isSelected) {
       return { selectedSegments: state.selectedSegments.filter(s => s.id !== segment.id) };
     } else {
-      // Add segment and sort by start_time to maintain order
-      const newSelection = [...state.selectedSegments, segment].sort((a, b) => a.start_time - b.start_time);
-      return { selectedSegments: newSelection };
+      return { selectedSegments: [...state.selectedSegments, segment] };
     }
   }),
   clearSelectedSegments: () => set({ selectedSegments: [] }),
+
   setShowSaveToast: (show) => set({ showSaveToast: show }),
 }));
-

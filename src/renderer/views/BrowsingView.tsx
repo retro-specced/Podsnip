@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useLayoutEffect } from 'react';
 import { useAppStore } from '../store/appStore';
 import { Episode } from '../../shared/types';
 import AddPodcastModal from '../components/AddPodcastModal';
@@ -16,28 +16,58 @@ function BrowsingView() {
     setCurrentState,
     setPodcasts,
     setError,
+    updateCurrentSnapshot,
+    restoredScrollPosition,
   } = useAppStore();
+
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'longest' | 'shortest'>('newest');
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
 
   useEffect(() => {
-    // Select first podcast by default
+    // Select first podcast by default only if no podcasts are selected
     if (podcasts.length > 0 && !currentPodcast) {
       handleSelectPodcast(podcasts[0].id);
     }
-  }, [podcasts]);
+  }, [podcasts, currentPodcast]);
+
+  // Unified episode loading (Handles both manual selection and history restoration)
+  useEffect(() => {
+    const loadEpisodes = async () => {
+      if (!currentPodcast) return;
+
+      try {
+        const episodes = await window.api.episode.list(currentPodcast.id);
+        setEpisodes(episodes);
+      } catch (error) {
+        setError('Failed to load podcast episodes');
+      }
+    };
+
+    if (currentPodcast) {
+      loadEpisodes();
+    }
+  }, [currentPodcast?.id]);
+
+  // Restore scroll position
+  useLayoutEffect(() => {
+    if (restoredScrollPosition !== null && scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = restoredScrollPosition;
+    }
+  }, [restoredScrollPosition, episodes]); // Scroll after episodes render
 
   const handleSelectPodcast = async (podcastId: number) => {
     try {
       const podcast = await window.api.podcast.get(podcastId);
       setCurrentPodcast(podcast);
+      // Save selection to current history snapshot
+      updateCurrentSnapshot({ podcast });
 
-      const episodes = await window.api.episode.list(podcastId);
-      setEpisodes(episodes);
+      // Note: Episodes are loaded by the useEffect above
     } catch (error) {
-      setError('Failed to load podcast episodes');
+      setError('Failed to load podcast details');
     }
   };
 
@@ -66,6 +96,10 @@ function BrowsingView() {
   };
 
   const handlePlayEpisode = async (episode: Episode) => {
+    // Save scroll position before navigating away
+    if (scrollContainerRef.current) {
+      updateCurrentSnapshot({ scrollPosition: scrollContainerRef.current.scrollTop });
+    }
     setCurrentEpisode(episode);
     setCurrentState('player');
   };
@@ -221,7 +255,7 @@ function BrowsingView() {
               </select>
             </div>
 
-            <div className="episodes-list">
+            <div className="episodes-list" ref={scrollContainerRef}>
               {getSortedEpisodes().map((episode) => (
                 <div key={episode.id} className="episode-item">
                   <div className="episode-content">
