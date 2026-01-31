@@ -13,6 +13,7 @@ interface EnrichedAnnotation extends Annotation {
   episode_id: number;
   podcast_title?: string;
   podcast_id?: number;
+  podcast_artwork?: string;
 }
 
 interface PodcastGroup {
@@ -129,9 +130,7 @@ function NotesView() {
       const pId = annotation.podcast_id || 0;
       const pTitle = annotation.podcast_title || 'Unknown Podcast';
 
-      // Use episode artwork as podcast artwork fallback if needed, or get from podcast if available
-      // Ideally we'd have podcast_artwork, but episode_artwork usually works
-      const artwork = annotation.episode_artwork || '';
+      const artwork = annotation.podcast_artwork || annotation.episode_artwork || '';
 
       if (!groups[pId]) {
         groups[pId] = {

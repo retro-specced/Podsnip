@@ -312,7 +312,8 @@ export class DatabaseService {
           e.artwork_url as episode_artwork,
           e.id as episode_id,
           p.title as podcast_title,
-          p.id as podcast_id
+          p.id as podcast_id,
+          p.artwork_url as podcast_artwork
         FROM annotations a
         JOIN transcripts t ON a.transcript_id = t.id
         JOIN episodes e ON t.episode_id = e.id
@@ -329,7 +330,8 @@ export class DatabaseService {
           e.artwork_url as episode_artwork,
           e.id as episode_id,
           p.title as podcast_title,
-          p.id as podcast_id
+          p.id as podcast_id,
+          p.artwork_url as podcast_artwork
         FROM annotations a
         JOIN transcripts t ON a.transcript_id = t.id
         JOIN episodes e ON t.episode_id = e.id
