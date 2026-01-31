@@ -3,8 +3,8 @@ import { Podcast, Episode, Transcript, Annotation, AppState } from '../../shared
 
 interface HistorySnapshot {
   view: AppState;
-  podcastId: number | null;
-  episodeId: number | null;
+  podcast: Podcast | null;
+  episode: Episode | null;
 }
 
 interface AppStore {
@@ -80,7 +80,7 @@ interface AppStore {
 export const useAppStore = create<AppStore>((set, get) => ({
   // Initial state
   currentState: 'onboarding',
-  history: [{ view: 'onboarding', podcastId: null, episodeId: null }],
+  history: [{ view: 'onboarding', podcast: null, episode: null }],
   historyIndex: 0,
 
   podcasts: [],
@@ -110,8 +110,12 @@ export const useAppStore = create<AppStore>((set, get) => ({
     // Construct new snapshot
     const newSnapshot: HistorySnapshot = {
       view,
-      podcastId: context.podcastId !== undefined ? context.podcastId : state.currentPodcast?.id || null,
-      episodeId: context.episodeId !== undefined ? context.episodeId : state.currentEpisode?.id || null,
+      podcast: context.podcastId !== undefined
+        ? (state.podcasts.find(p => p.id === context.podcastId) || null)
+        : state.currentPodcast,
+      episode: context.episodeId !== undefined
+        ? (state.episodes.find(e => e.id === context.episodeId) || null)
+        : state.currentEpisode,
     };
 
     // If replace is true, replace current history entry
@@ -122,8 +126,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
         currentState: view,
         history: newHistory,
         // Also update context if provided
-        currentPodcast: context.podcastId ? state.podcasts.find(p => p.id === context.podcastId) || null : (context.podcastId === null ? null : state.currentPodcast),
-        currentEpisode: context.episodeId ? state.episodes.find(e => e.id === context.episodeId) || null : (context.episodeId === null ? null : state.currentEpisode),
+        currentPodcast: newSnapshot.podcast,
+        currentEpisode: newSnapshot.episode,
       };
     }
 
@@ -136,8 +140,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
       history: newHistory,
       historyIndex: newHistory.length - 1,
       // Update context
-      currentPodcast: context.podcastId !== undefined ? (state.podcasts.find(p => p.id === context.podcastId) || null) : state.currentPodcast,
-      currentEpisode: context.episodeId !== undefined ? (state.episodes.find(e => e.id === context.episodeId) || null) : state.currentEpisode,
+      currentPodcast: newSnapshot.podcast,
+      currentEpisode: newSnapshot.episode,
     };
   }),
 
@@ -148,8 +152,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
       return {
         historyIndex: newIndex,
         currentState: snapshot.view,
-        currentPodcast: snapshot.podcastId ? state.podcasts.find(p => p.id === snapshot.podcastId) || null : null,
-        currentEpisode: snapshot.episodeId ? state.episodes.find(e => e.id === snapshot.episodeId) || null : null,
+        currentPodcast: snapshot.podcast,
+        currentEpisode: snapshot.episode,
       };
     }
     return {};
@@ -162,8 +166,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
       return {
         historyIndex: newIndex,
         currentState: snapshot.view,
-        currentPodcast: snapshot.podcastId ? state.podcasts.find(p => p.id === snapshot.podcastId) || null : null,
-        currentEpisode: snapshot.episodeId ? state.episodes.find(e => e.id === snapshot.episodeId) || null : null,
+        currentPodcast: snapshot.podcast,
+        currentEpisode: snapshot.episode,
       };
     }
     return {};
