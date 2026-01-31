@@ -1,30 +1,55 @@
 .notes-view {
   display: flex;
-  height: 100%;
-  overflow: hidden;
-}
-
-.notes-left {
-  flex: 1;
-  background: var(--surface);
-  border-right: 1px solid var(--border-color);
-  padding: var(--spacing-lg);
-  display: flex;
   flex-direction: column;
+  height: 100%;
+  padding: var(--spacing-xl);
+  overflow: hidden;
   gap: var(--spacing-lg);
 }
 
-.notes-controls {
+.notes-top-section {
   display: flex;
   flex-direction: column;
+  gap: var(--spacing-lg);
+  flex-shrink: 0;
+}
+
+.notes-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0;
+  /* Override previous margin */
+}
+
+.notes-stats-small {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+}
+
+.stat-separator {
+  opacity: 0.5;
+}
+
+.notes-controls-bar {
+  display: flex;
   gap: var(--spacing-md);
+  align-items: center;
 }
 
 .notes-search {
+  flex: 1;
+  max-width: 400px;
   padding: var(--spacing-md);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   font-size: var(--font-size-sm);
+  background: var(--surface);
+  color: var(--text-primary);
 }
 
 .notes-search:focus {
@@ -32,36 +57,13 @@
   border-color: var(--primary-color);
 }
 
-.notes-stats {
-  display: flex;
-  gap: var(--spacing-lg);
-  padding: var(--spacing-lg);
-  background: var(--background);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-color);
-}
-
-.stat {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xs);
-}
-
-.stat-value {
-  font-size: var(--font-size-2xl);
-  font-weight: 700;
-  color: var(--primary-color);
-}
-
-.stat-label {
-  font-size: var(--font-size-sm);
-  color: var(--text-secondary);
-}
-
-.notes-right {
-  flex: 2;
+.notes-content-area {
+  flex: 1;
   overflow-y: auto;
-  padding: var(--spacing-xl);
+  min-height: 0;
+  /* Important for flex child scrolling */
+  /* Add padding to bottom to avoid content being cut off */
+  padding-bottom: var(--spacing-xl);
 }
 
 .notes-list {
@@ -71,6 +73,10 @@
 }
 
 .note-card {
+  break-inside: avoid;
+  /* Prevent card from splitting across columns */
+  margin-bottom: var(--spacing-lg);
+  /* Bottom margin for masonry vertical spacing */
   padding: var(--spacing-lg);
   background: var(--background);
   border: 1px solid var(--border-color);
@@ -79,6 +85,55 @@
   display: flex;
   flex-direction: column;
   gap: var(--spacing-md);
+}
+
+/* ... existing styles ... */
+
+/* View Toggle */
+.notes-view-toggle {
+  display: flex;
+  background: var(--surface);
+  padding: 4px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  gap: 4px;
+}
+
+.toggle-option {
+  padding: 6px 16px;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  transition: all 0.2s;
+}
+
+.toggle-option.active {
+  background: var(--primary-color);
+  color: white;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* Masonry Layout */
+.notes-masonry-grid {
+  column-count: 3;
+  column-gap: var(--spacing-lg);
+  width: 100%;
+}
+
+@media (max-width: 1200px) {
+  .notes-masonry-grid {
+    column-count: 2;
+  }
+}
+
+@media (max-width: 768px) {
+  .notes-masonry-grid {
+    column-count: 1;
+  }
 }
 
 .note-card:hover {
@@ -328,4 +383,26 @@
 
 .back-to-podcasts-button:hover {
   background: var(--border-color);
+}
+
+/* Podcast Episode Grouping */
+.notes-list-by-episode {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xl);
+}
+
+.episode-notes-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.episode-group-title {
+  font-size: var(--font-size-md);
+  font-weight: 700;
+  color: var(--text-primary);
+  padding-bottom: var(--spacing-sm);
+  border-bottom: 2px solid var(--border-color);
+  margin: 0;
 }

@@ -37,6 +37,14 @@ function NotesView() {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest'>('newest');
   const [selectedPodcastId, setSelectedPodcastId] = useState<number | null>(null);
+  const [viewMode, setViewMode] = useState<'masonry' | 'podcasts'>(selectedPodcastId ? 'podcasts' : 'masonry');
+
+  // Sync viewMode if podcast is selected via other means, but mainly controlled by user
+  useEffect(() => {
+    if (selectedPodcastId) {
+      setViewMode('podcasts');
+    }
+  }, [selectedPodcastId]);
 
   useEffect(() => {
     loadAnnotations();
@@ -166,6 +174,69 @@ function NotesView() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const renderNoteCard = (annotation: EnrichedAnnotation) => (
+    <div key={annotation.id} className="note-card">
+      <div className="note-episode-info">
+        {annotation.episode_artwork && (
+          <img
+            src={annotation.episode_artwork}
+            alt={annotation.episode_title}
+            className="note-episode-artwork"
+          />
+        )}
+        <div className="note-episode-details">
+          <h4 className="note-episode-title">{annotation.episode_title}</h4>
+          <div className="note-timestamp">{formatTime(annotation.start_time)}</div>
+        </div>
+        <button
+          className="note-jump-button"
+          onClick={() => handleJumpToPodcast(annotation)}
+          title="Jump to this moment in the podcast"
+        >
+          <span className="jump-icon">🎧</span>
+          <span className="jump-text">Jump</span>
+        </button>
+        <button
+          className="note-delete"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleDeleteAnnotation(annotation.id);
+          }}
+          title="Delete note"
+        >
+          🗑️
+        </button>
+      </div>
+
+      <div className="note-transcript">
+        <div className="note-transcript-label">Transcript:</div>
+        <div className="note-transcript-text">"{annotation.transcript_text}"</div>
+      </div>
+
+      <div className="note-content">{annotation.note_text}</div>
+
+      <div className="note-footer">
+        <div className="note-date">{formatDate(annotation.created_at)}</div>
+        {annotation.tags && (
+          <div className="note-tags">
+            {annotation.tags.split(',').map((tag, index) => (
+              <span key={index} className="note-tag">
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  // Render Masonry Grid (All Notes)
+  const renderMasonryGrid = () => (
+    <div className="notes-masonry-grid">
+      {filteredAnnotations.map(renderNoteCard)}
+    </div>
+  );
+
   // Render Podcast List (Level 1)
   const renderPodcastList = () => (
     <div className="podcast-grid">
@@ -202,6 +273,27 @@ function NotesView() {
     const group = groupedPodcasts.find(g => g.podcastId === selectedPodcastId);
     if (!group) return null;
 
+    // Group by Episode
+    const episodeGroups: Record<number, { title: string; annotations: EnrichedAnnotation[] }> = {};
+    group.annotations.forEach(note => {
+      if (!episodeGroups[note.episode_id]) {
+        episodeGroups[note.episode_id] = {
+          title: note.episode_title,
+          annotations: []
+        };
+      }
+      episodeGroups[note.episode_id].annotations.push(note);
+    });
+
+    // Sort episodes by latest note (or maybe episode release? let's stick to note creation for now or keep existing order)
+    // The main annotations list is already sorted by date, so we just follow the insertion order
+    const sortedEpisodeIds = Object.keys(episodeGroups).sort((a, b) => {
+      // Sort by most recent note in the episode
+      const aTime = Math.max(...episodeGroups[Number(a)].annotations.map(n => new Date(n.created_at).getTime()));
+      const bTime = Math.max(...episodeGroups[Number(b)].annotations.map(n => new Date(n.created_at).getTime()));
+      return bTime - aTime;
+    });
+
     return (
       <div className="notes-list-container">
         <div className="notes-header-row">
@@ -214,62 +306,18 @@ function NotesView() {
           <h2 className="section-title" style={{ margin: 0 }}>{group.podcastTitle}</h2>
         </div>
 
-        <div className="notes-list">
-          {group.annotations.map((annotation) => (
-            <div key={annotation.id} className="note-card">
-              <div className="note-episode-info">
-                {annotation.episode_artwork && (
-                  <img
-                    src={annotation.episode_artwork}
-                    alt={annotation.episode_title}
-                    className="note-episode-artwork"
-                  />
-                )}
-                <div className="note-episode-details">
-                  <h4 className="note-episode-title">{annotation.episode_title}</h4>
-                  <div className="note-timestamp">{formatTime(annotation.start_time)}</div>
+        <div className="notes-list-by-episode">
+          {sortedEpisodeIds.map((epId) => {
+            const epGroup = episodeGroups[Number(epId)];
+            return (
+              <div key={epId} className="episode-notes-group">
+                <h3 className="episode-group-title">{epGroup.title}</h3>
+                <div className="notes-list">
+                  {epGroup.annotations.map(renderNoteCard)}
                 </div>
-                <button
-                  className="note-jump-button"
-                  onClick={() => handleJumpToPodcast(annotation)}
-                  title="Jump to this moment in the podcast"
-                >
-                  <span className="jump-icon">🎧</span>
-                  <span className="jump-text">Jump to Podcast</span>
-                </button>
-                <button
-                  className="note-delete"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteAnnotation(annotation.id);
-                  }}
-                  title="Delete note"
-                >
-                  🗑️
-                </button>
               </div>
-
-              <div className="note-transcript">
-                <div className="note-transcript-label">Transcript:</div>
-                <div className="note-transcript-text">"{annotation.transcript_text}"</div>
-              </div>
-
-              <div className="note-content">{annotation.note_text}</div>
-
-              <div className="note-footer">
-                <div className="note-date">{formatDate(annotation.created_at)}</div>
-                {annotation.tags && (
-                  <div className="note-tags">
-                    {annotation.tags.split(',').map((tag, index) => (
-                      <span key={index} className="note-tag">
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     );
@@ -277,9 +325,35 @@ function NotesView() {
 
   return (
     <div className="notes-view">
-      <div className="notes-left">
-        <h2 className="section-title">Notes Library</h2>
-        <div className="notes-controls">
+      {/* Top Section */}
+      <div className="notes-top-section">
+        <div className="notes-header-row">
+          <h2 className="section-title">Notes Library</h2>
+
+          {/* View Toggle */}
+          {!selectedPodcastId && (
+            <div className="notes-view-toggle">
+              <button
+                className={`toggle-option ${viewMode === 'masonry' ? 'active' : ''}`}
+                onClick={() => {
+                  setViewMode('masonry');
+                  setSelectedPodcastId(null);
+                }}
+              >
+                All Notes
+              </button>
+              <button
+                className={`toggle-option ${viewMode === 'podcasts' ? 'active' : ''}`}
+                onClick={() => setViewMode('podcasts')}
+              >
+                Podcasts
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Controls Bar */}
+        <div className="notes-controls-bar">
           <input
             type="text"
             placeholder="Search notes..."
@@ -291,23 +365,22 @@ function NotesView() {
             <option value="newest">Newest First</option>
             <option value="oldest">Oldest First</option>
           </select>
-        </div>
 
-        <div className="notes-stats">
-          <div className="stat">
-            <span className="stat-value">{annotations.length}</span>
-            <span className="stat-label">Total Notes</span>
-          </div>
-          <div className="stat">
-            <span className="stat-value">{groupedPodcasts.length}</span>
-            <span className="stat-label">Podcasts</span>
+          <div className="notes-stats-small" style={{ marginLeft: 'auto' }}>
+            <span className="stat-item">{groupedPodcasts.length} Podcasts</span>
+            <span className="stat-separator">•</span>
+            <span className="stat-item">{annotations.length} Notes</span>
           </div>
         </div>
       </div>
 
-      <div className="notes-right">
+      <div className="notes-content-area">
         {filteredAnnotations.length > 0 ? (
-          selectedPodcastId ? renderNotesList() : renderPodcastList()
+          viewMode === 'masonry' ? (
+            renderMasonryGrid()
+          ) : (
+            selectedPodcastId ? renderNotesList() : renderPodcastList()
+          )
         ) : (
           <div className="empty-state">
             <div className="empty-icon">📝</div>
