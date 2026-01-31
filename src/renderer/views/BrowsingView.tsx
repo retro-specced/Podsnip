@@ -21,6 +21,7 @@ function BrowsingView() {
     setRestoredScrollPosition,
     restoredVisibleCount,
     setRestoredVisibleCount,
+    navigateToView,
   } = useAppStore();
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -334,9 +335,6 @@ function BrowsingView() {
                       <span className="meta-text">{formatDate(episode.published_date)}</span>
                       <span className="meta-dot">·</span>
                       <span className="meta-text">{formatDuration(episode.duration)}</span>
-                      {episode.has_notes && (
-                        <span className="notes-indicator" title="Has notes">📝</span>
-                      )}
                     </div>
 
                     <div className="episode-description-row">
@@ -357,6 +355,19 @@ function BrowsingView() {
                             : `${formatDuration(Math.max(0, episode.duration - episode.current_position!))} remaining`
                           }
                         </span>
+                      </div>
+                    )}
+
+                    {episode.has_notes && (
+                      <div
+                        className="notes-indicator-corner"
+                        title="View notes"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigateToView('notes', { podcastId: currentPodcast?.id, episodeId: episode.id });
+                        }}
+                      >
+                        📝
                       </div>
                     )}
                   </div>

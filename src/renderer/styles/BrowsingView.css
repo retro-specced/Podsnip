@@ -431,6 +431,33 @@
   -webkit-user-select: none;
   /* Prevent text selection while clicking */
   user-select: none;
+  position: relative;
+  /* For absolute positioning of notes indicator */
+}
+
+.notes-indicator-corner {
+  position: absolute;
+  bottom: var(--spacing-md);
+  right: var(--spacing-md);
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  cursor: pointer;
+  transition: var(--transition);
+  box-shadow: var(--shadow-sm);
+  z-index: 2;
+}
+
+.notes-indicator-corner:hover {
+  background: var(--surface-hover);
+  transform: scale(1.1);
+  border-color: var(--primary-color);
 }
 
 .episode-item.clickable:hover {

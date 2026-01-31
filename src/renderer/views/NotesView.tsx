@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { useAppStore } from '../store/appStore';
 import { Annotation } from '../../shared/types';
 import '../styles/NotesView.css';
@@ -33,6 +33,8 @@ function NotesView() {
     setJumpToTime,
     setCurrentPodcast,
     setEpisodes,
+    currentPodcast, // needed for deep link initialization
+    currentEpisode, // needed for scrolling to specific episode
   } = useAppStore();
   const [filteredAnnotations, setFilteredAnnotations] = useState<EnrichedAnnotation[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -40,9 +42,13 @@ function NotesView() {
   const [timeRange, setTimeRange] = useState<'all' | 'today' | 'week' | 'month' | 'year'>('all');
 
 
-  const [selectedPodcastId, setSelectedPodcastId] = useState<number | null>(null);
+  // Initialize selectedPodcastId from store if present (supports deep linking)
+  const [selectedPodcastId, setSelectedPodcastId] = useState<number | null>(currentPodcast?.id || null);
   const [viewMode, setViewMode] = useState<'masonry' | 'podcasts'>(selectedPodcastId ? 'podcasts' : 'masonry');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+
+  // Ref for scrolling to deep-linked episode
+  const episodeRefs = useRef<Record<number, HTMLDivElement | null>>({});
 
   // Sync viewMode if podcast is selected via other means, but mainly controlled by user
   useEffect(() => {
@@ -50,6 +56,20 @@ function NotesView() {
       setViewMode('podcasts');
     }
   }, [selectedPodcastId]);
+
+  // Scroll to deep-linked episode if present
+  useEffect(() => {
+    if (selectedPodcastId && currentEpisode?.id && viewMode === 'podcasts') {
+      // Wait for render
+      setTimeout(() => {
+        const element = episodeRefs.current[currentEpisode.id];
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          // Highlight effect?
+        }
+      }, 100);
+    }
+  }, [selectedPodcastId, currentEpisode?.id, viewMode, filteredAnnotations]); // Depend on filteredAnnotations to ensure content is loaded
 
   useEffect(() => {
     loadAnnotations();
@@ -380,7 +400,11 @@ function NotesView() {
           {sortedEpisodeIds.map((epId) => {
             const epGroup = episodeGroups[Number(epId)];
             return (
-              <div key={epId} className="episode-notes-group-split">
+              <div
+                key={epId}
+                className="episode-notes-group-split"
+                ref={(el) => (episodeRefs.current[Number(epId)] = el)}
+              >
                 <div className="episode-info-sidebar">
                   <div className="episode-sidebar-artwork-container">
                     {epGroup.annotations[0].episode_artwork ? (
