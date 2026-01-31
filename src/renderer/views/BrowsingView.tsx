@@ -314,7 +314,12 @@ function BrowsingView() {
 
             <div className="episodes-list" ref={scrollContainerRef} onScroll={handleScroll}>
               {sortedEpisodes.slice(0, visibleCount).map((episode) => (
-                <div key={episode.id} className="episode-item">
+                <div
+                  key={episode.id}
+                  className="episode-item clickable"
+                  onClick={() => handlePlayEpisode(episode)}
+                  title="Play Episode"
+                >
                   <img
                     src={episode.artwork_url || currentPodcast.artwork_url}
                     alt={episode.title}
@@ -323,9 +328,6 @@ function BrowsingView() {
                   <div className="episode-content">
                     <div className="episode-header">
                       <h3 className="episode-title">{episode.title}</h3>
-                      <button className="play-button-small" onClick={() => handlePlayEpisode(episode)} title="Play">
-                        ▶️
-                      </button>
                     </div>
 
                     <div className="episode-meta-row">
@@ -350,7 +352,7 @@ function BrowsingView() {
                           />
                         </div>
                         <span className="progress-text">
-                          {episode.completed
+                          {episode.completed || (episode.duration - episode.current_position! < 1)
                             ? "Finished"
                             : `${formatDuration(Math.max(0, episode.duration - episode.current_position!))} remaining`
                           }
