@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useAppStore } from '../store/appStore';
 import { Annotation } from '../../shared/types';
 import '../styles/NotesView.css';
+import { format } from 'date-fns';
 
 interface EnrichedAnnotation extends Annotation {
   transcript_text: string;
@@ -10,6 +11,15 @@ interface EnrichedAnnotation extends Annotation {
   episode_title: string;
   episode_artwork: string;
   episode_id: number;
+  podcast_title?: string;
+  podcast_id?: number;
+}
+
+interface PodcastGroup {
+  podcastId: number;
+  podcastTitle: string;
+  artworkUrl: string;
+  annotations: EnrichedAnnotation[];
 }
 
 function NotesView() {
@@ -26,6 +36,7 @@ function NotesView() {
   const [filteredAnnotations, setFilteredAnnotations] = useState<EnrichedAnnotation[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest'>('newest');
+  const [selectedPodcastId, setSelectedPodcastId] = useState<number | null>(null);
 
   useEffect(() => {
     loadAnnotations();
@@ -45,12 +56,14 @@ function NotesView() {
   };
 
   const filterAndSortAnnotations = () => {
-    let filtered = [...annotations];
+    // Cast to EnrichedAnnotation[] since we know the backend returns these fields
+    let filtered = [...annotations] as EnrichedAnnotation[];
 
     // Filter by search query
     if (searchQuery) {
       filtered = filtered.filter((annotation) =>
-        annotation.note_text.toLowerCase().includes(searchQuery.toLowerCase())
+        annotation.note_text.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        annotation.transcript_text.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
 
@@ -63,6 +76,39 @@ function NotesView() {
 
     setFilteredAnnotations(filtered);
   };
+
+  // Group annotations by podcast
+  const groupedPodcasts = useMemo(() => {
+    const groups: Record<number, PodcastGroup> = {};
+
+    filteredAnnotations.forEach((annotation) => {
+      // Use podcast_id if available, fallback to 0 or generic grouping if missing
+      // (The backend update should ensure podcast_id is present)
+      const pId = annotation.podcast_id || 0;
+      const pTitle = annotation.podcast_title || 'Unknown Podcast';
+
+      // Use episode artwork as podcast artwork fallback if needed, or get from podcast if available
+      // Ideally we'd have podcast_artwork, but episode_artwork usually works
+      const artwork = annotation.episode_artwork || '';
+
+      if (!groups[pId]) {
+        groups[pId] = {
+          podcastId: pId,
+          podcastTitle: pTitle,
+          artworkUrl: artwork,
+          annotations: [],
+        };
+      }
+      groups[pId].annotations.push(annotation);
+    });
+
+    return Object.values(groups).sort((a, b) => {
+      // Sort groups by latest annotation
+      const aLatest = Math.max(...a.annotations.map(n => new Date(n.created_at).getTime()));
+      const bLatest = Math.max(...b.annotations.map(n => new Date(n.created_at).getTime()));
+      return bLatest - aLatest;
+    });
+  }, [filteredAnnotations]);
 
   const handleDeleteAnnotation = async (annotationId: number) => {
     if (!confirm('Are you sure you want to delete this note?')) {
@@ -105,16 +151,8 @@ function NotesView() {
     }
   };
 
-
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    return format(new Date(dateString), 'MMM d, yyyy h:mm a');
   };
 
   const formatTime = (seconds: number) => {
@@ -126,6 +164,115 @@ function NotesView() {
       return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     }
     return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Render Podcast List (Level 1)
+  const renderPodcastList = () => (
+    <div className="podcast-grid">
+      {groupedPodcasts.map((group) => (
+        <div
+          key={group.podcastId}
+          className="podcast-notes-card"
+          onClick={() => setSelectedPodcastId(group.podcastId)}
+        >
+          <div className="podcast-notes-header">
+            {group.artworkUrl && (
+              <img src={group.artworkUrl} alt={group.podcastTitle} className="podcast-notes-artwork" />
+            )}
+            <div className="podcast-notes-info">
+              <h3 className="podcast-notes-title">{group.podcastTitle}</h3>
+              <div className="podcast-notes-count">{group.annotations.length} Notes</div>
+            </div>
+          </div>
+          <div className="podcast-notes-preview">
+            <span className="podcast-notes-preview-text">
+              "{group.annotations[0].note_text}"
+            </span>
+            <div className="note-date" style={{ marginTop: '8px', fontSize: '11px' }}>
+              Last edited {formatDate(group.annotations[0].created_at)}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
+  // Render Notes List for Selected Podcast (Level 2)
+  const renderNotesList = () => {
+    const group = groupedPodcasts.find(g => g.podcastId === selectedPodcastId);
+    if (!group) return null;
+
+    return (
+      <div className="notes-list-container">
+        <div className="notes-header-row">
+          <button
+            className="back-to-podcasts-button"
+            onClick={() => setSelectedPodcastId(null)}
+          >
+            ← Back to Library
+          </button>
+          <h2 className="section-title" style={{ margin: 0 }}>{group.podcastTitle}</h2>
+        </div>
+
+        <div className="notes-list">
+          {group.annotations.map((annotation) => (
+            <div key={annotation.id} className="note-card">
+              <div className="note-episode-info">
+                {annotation.episode_artwork && (
+                  <img
+                    src={annotation.episode_artwork}
+                    alt={annotation.episode_title}
+                    className="note-episode-artwork"
+                  />
+                )}
+                <div className="note-episode-details">
+                  <h4 className="note-episode-title">{annotation.episode_title}</h4>
+                  <div className="note-timestamp">{formatTime(annotation.start_time)}</div>
+                </div>
+                <button
+                  className="note-jump-button"
+                  onClick={() => handleJumpToPodcast(annotation)}
+                  title="Jump to this moment in the podcast"
+                >
+                  <span className="jump-icon">🎧</span>
+                  <span className="jump-text">Jump to Podcast</span>
+                </button>
+                <button
+                  className="note-delete"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteAnnotation(annotation.id);
+                  }}
+                  title="Delete note"
+                >
+                  🗑️
+                </button>
+              </div>
+
+              <div className="note-transcript">
+                <div className="note-transcript-label">Transcript:</div>
+                <div className="note-transcript-text">"{annotation.transcript_text}"</div>
+              </div>
+
+              <div className="note-content">{annotation.note_text}</div>
+
+              <div className="note-footer">
+                <div className="note-date">{formatDate(annotation.created_at)}</div>
+                {annotation.tags && (
+                  <div className="note-tags">
+                    {annotation.tags.split(',').map((tag, index) => (
+                      <span key={index} className="note-tag">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -151,65 +298,16 @@ function NotesView() {
             <span className="stat-value">{annotations.length}</span>
             <span className="stat-label">Total Notes</span>
           </div>
+          <div className="stat">
+            <span className="stat-value">{groupedPodcasts.length}</span>
+            <span className="stat-label">Podcasts</span>
+          </div>
         </div>
       </div>
 
       <div className="notes-right">
         {filteredAnnotations.length > 0 ? (
-          <div className="notes-list">
-            {filteredAnnotations.map((annotation) => (
-              <div key={annotation.id} className="note-card">
-                <div className="note-episode-info">
-                  {annotation.episode_artwork && (
-                    <img
-                      src={annotation.episode_artwork}
-                      alt={annotation.episode_title}
-                      className="note-episode-artwork"
-                    />
-                  )}
-                  <div className="note-episode-details">
-                    <h4 className="note-episode-title">{annotation.episode_title}</h4>
-                    <div className="note-timestamp">{formatTime(annotation.start_time)}</div>
-                  </div>
-                  <button
-                    className="note-jump-button"
-                    onClick={() => handleJumpToPodcast(annotation)}
-                    title="Jump to this moment in the podcast"
-                  >
-                    <span className="jump-icon">🎧</span>
-                    <span className="jump-text">Jump to Podcast</span>
-                  </button>
-                  <button
-                    className="note-delete"
-                    onClick={() => handleDeleteAnnotation(annotation.id)}
-                    title="Delete note"
-                  >
-                    🗑️
-                  </button>
-                </div>
-
-                <div className="note-transcript">
-                  <div className="note-transcript-label">Transcript:</div>
-                  <div className="note-transcript-text">"{annotation.transcript_text}"</div>
-                </div>
-
-                <div className="note-content">{annotation.note_text}</div>
-
-                <div className="note-footer">
-                  <div className="note-date">{formatDate(annotation.created_at)}</div>
-                  {annotation.tags && (
-                    <div className="note-tags">
-                      {annotation.tags.split(',').map((tag, index) => (
-                        <span key={index} className="note-tag">
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
+          selectedPodcastId ? renderNotesList() : renderPodcastList()
         ) : (
           <div className="empty-state">
             <div className="empty-icon">📝</div>

@@ -305,10 +305,13 @@ export class DatabaseService {
           a.*,
           e.title as episode_title,
           e.artwork_url as episode_artwork,
-          e.id as episode_id
+          e.id as episode_id,
+          p.title as podcast_title,
+          p.id as podcast_id
         FROM annotations a
         JOIN transcripts t ON a.transcript_id = t.id
         JOIN episodes e ON t.episode_id = e.id
+        JOIN podcasts p ON e.podcast_id = p.id
         WHERE t.episode_id = ?
         ORDER BY a.created_at DESC
       `);
@@ -319,10 +322,13 @@ export class DatabaseService {
           a.*,
           e.title as episode_title,
           e.artwork_url as episode_artwork,
-          e.id as episode_id
+          e.id as episode_id,
+          p.title as podcast_title,
+          p.id as podcast_id
         FROM annotations a
         JOIN transcripts t ON a.transcript_id = t.id
         JOIN episodes e ON t.episode_id = e.id
+        JOIN podcasts p ON e.podcast_id = p.id
         ORDER BY a.created_at DESC
       `);
       return stmt.all() as any[];
