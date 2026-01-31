@@ -18,6 +18,7 @@ function BrowsingView() {
     setError,
     updateCurrentSnapshot,
     restoredScrollPosition,
+    setRestoredScrollPosition,
   } = useAppStore();
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -60,6 +61,12 @@ function BrowsingView() {
 
   const handleSelectPodcast = async (podcastId: number) => {
     try {
+      // Reset scroll position for new podcast
+      if (scrollContainerRef.current) {
+        scrollContainerRef.current.scrollTop = 0;
+      }
+      setRestoredScrollPosition(null); // Prevent restoration effect from interfering
+
       const podcast = await window.api.podcast.get(podcastId);
       setCurrentPodcast(podcast);
       // Save selection to current history snapshot
