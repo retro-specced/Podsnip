@@ -38,6 +38,9 @@ export interface Annotation {
   id: number;
   transcript_id: number;
   note_text: string;
+  transcript_text: string;
+  start_time: number;
+  end_time: number;
   created_at: string;
   updated_at: string;
   tags: string;
@@ -94,10 +97,10 @@ export class DatabaseService {
     // Migration: Add artwork_url to existing episodes table if it doesn't exist
     const columns = this.db.pragma('table_info(episodes)') as Array<{ name: string }>;
     const hasArtworkUrl = columns.some((col) => col.name === 'artwork_url');
-    
+
     if (!hasArtworkUrl) {
       this.db.exec(`ALTER TABLE episodes ADD COLUMN artwork_url TEXT`);
-      
+
       // Populate artwork_url from parent podcast for existing episodes
       this.db.exec(`
         UPDATE episodes
@@ -128,12 +131,35 @@ export class DatabaseService {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         transcript_id INTEGER NOT NULL,
         note_text TEXT NOT NULL,
+        transcript_text TEXT,
+        start_time REAL,
+        end_time REAL,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
         tags TEXT,
         FOREIGN KEY (transcript_id) REFERENCES transcripts(id) ON DELETE CASCADE
       )
     `);
+
+    // Migration: Add transcript_text, start_time, end_time to existing annotations table
+    const annotationColumns = this.db.pragma('table_info(annotations)') as Array<{ name: string }>;
+    const hasTranscriptText = annotationColumns.some((col) => col.name === 'transcript_text');
+
+    if (!hasTranscriptText) {
+      this.db.exec(`ALTER TABLE annotations ADD COLUMN transcript_text TEXT`);
+      this.db.exec(`ALTER TABLE annotations ADD COLUMN start_time REAL`);
+      this.db.exec(`ALTER TABLE annotations ADD COLUMN end_time REAL`);
+
+      // Populate from transcripts for existing annotations
+      this.db.exec(`
+        UPDATE annotations
+        SET 
+          transcript_text = (SELECT text FROM transcripts WHERE transcripts.id = annotations.transcript_id),
+          start_time = (SELECT start_time FROM transcripts WHERE transcripts.id = annotations.transcript_id),
+          end_time = (SELECT end_time FROM transcripts WHERE transcripts.id = annotations.transcript_id)
+        WHERE transcript_text IS NULL
+      `);
+    }
 
     // Playback state table
     this.db.exec(`
@@ -247,13 +273,20 @@ export class DatabaseService {
   }
 
   // Annotation methods
-  createAnnotation(transcriptId: number, noteText: string, tags?: string[]): number {
+  createAnnotation(
+    transcriptId: number,
+    noteText: string,
+    transcriptText: string,
+    startTime: number,
+    endTime: number,
+    tags?: string[]
+  ): number {
     const stmt = this.db.prepare(`
-      INSERT INTO annotations (transcript_id, note_text, tags)
-      VALUES (?, ?, ?)
+      INSERT INTO annotations (transcript_id, note_text, transcript_text, start_time, end_time, tags)
+      VALUES (?, ?, ?, ?, ?, ?)
     `);
     const tagsStr = tags ? tags.join(',') : '';
-    const result = stmt.run(transcriptId, noteText, tagsStr);
+    const result = stmt.run(transcriptId, noteText, transcriptText, startTime, endTime, tagsStr);
     return result.lastInsertRowid as number;
   }
 
@@ -262,9 +295,6 @@ export class DatabaseService {
       const stmt = this.db.prepare(`
         SELECT 
           a.*,
-          t.text as transcript_text,
-          t.start_time,
-          t.end_time,
           e.title as episode_title,
           e.artwork_url as episode_artwork,
           e.id as episode_id
@@ -279,9 +309,6 @@ export class DatabaseService {
       const stmt = this.db.prepare(`
         SELECT 
           a.*,
-          t.text as transcript_text,
-          t.start_time,
-          t.end_time,
           e.title as episode_title,
           e.artwork_url as episode_artwork,
           e.id as episode_id

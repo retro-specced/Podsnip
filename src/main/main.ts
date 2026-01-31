@@ -120,8 +120,22 @@ ipcMain.handle('transcription:check-local', async () => {
 });
 
 // IPC Handlers for Annotations
-ipcMain.handle('annotation:create', async (_, data: { transcriptId: number; noteText: string; tags?: string[] }) => {
-  return await db.createAnnotation(data.transcriptId, data.noteText, data.tags);
+ipcMain.handle('annotation:create', async (_, data: {
+  transcriptId: number;
+  noteText: string;
+  transcriptText: string;
+  startTime: number;
+  endTime: number;
+  tags?: string[]
+}) => {
+  return await db.createAnnotation(
+    data.transcriptId,
+    data.noteText,
+    data.transcriptText,
+    data.startTime,
+    data.endTime,
+    data.tags
+  );
 });
 
 ipcMain.handle('annotation:list', async (_, episodeId?: number) => {

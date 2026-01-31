@@ -61,10 +61,18 @@
   margin-bottom: var(--spacing-sm);
 }
 
+.segment-count {
+  color: var(--primary-color);
+  font-weight: 500;
+}
+
 .segment-text-display {
   font-size: var(--font-size-base);
   line-height: 1.6;
   color: var(--text-primary);
+  max-height: 200px;
+  overflow-y: auto;
+  padding-right: var(--spacing-sm);
 }
 
 .annotation-form {

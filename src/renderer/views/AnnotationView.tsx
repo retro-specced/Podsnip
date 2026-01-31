@@ -3,18 +3,25 @@ import { useAppStore } from '../store/appStore';
 import '../styles/AnnotationView.css';
 
 function AnnotationView() {
-  const { selectedTranscript, setCurrentState, setError } = useAppStore();
+  const { selectedSegments, clearSelectedSegments, setCurrentState, setError, setShowSaveToast } = useAppStore();
   const [noteText, setNoteText] = useState('');
   const [tags, setTags] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
-  if (!selectedTranscript) {
+  if (selectedSegments.length === 0) {
     return (
       <div className="annotation-view">
-        <div className="empty-state">No transcript segment selected</div>
+        <div className="empty-state">No transcript segments selected</div>
       </div>
     );
   }
+
+  // Combine selected segments for display
+  const combinedText = selectedSegments.map(s => s.text).join(' ');
+  const startTime = selectedSegments[0].start_time;
+  const endTime = selectedSegments[selectedSegments.length - 1].end_time;
+  // Use the first segment's ID for the annotation
+  const primaryTranscriptId = selectedSegments[0].id;
 
   const handleSave = async () => {
     if (!noteText.trim()) {
@@ -32,12 +39,17 @@ function AnnotationView() {
         .filter((tag) => tag);
 
       await window.api.annotation.create({
-        transcriptId: selectedTranscript.id,
+        transcriptId: primaryTranscriptId,
         noteText: noteText.trim(),
+        transcriptText: combinedText,
+        startTime: startTime,
+        endTime: endTime,
         tags: tagArray.length > 0 ? tagArray : undefined,
       });
 
-      // Return to player view
+      // Show confirmation toast, clear selection and return to player view
+      setShowSaveToast(true);
+      clearSelectedSegments();
       setCurrentState('player');
     } catch (error) {
       setError('Failed to save annotation');
@@ -68,9 +80,12 @@ function AnnotationView() {
 
         <div className="selected-segment">
           <div className="segment-timestamp">
-            {formatTime(selectedTranscript.start_time)} - {formatTime(selectedTranscript.end_time)}
+            {formatTime(startTime)} - {formatTime(endTime)}
+            {selectedSegments.length > 1 && (
+              <span className="segment-count"> ({selectedSegments.length} segments)</span>
+            )}
           </div>
-          <div className="segment-text-display">{selectedTranscript.text}</div>
+          <div className="segment-text-display">{combinedText}</div>
         </div>
 
         <div className="annotation-form">

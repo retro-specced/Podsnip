@@ -46,9 +46,15 @@ interface AppStore {
   setIsLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
 
-  // Selected transcript for annotation
-  selectedTranscript: Transcript | null;
-  setSelectedTranscript: (transcript: Transcript | null) => void;
+  // Selected segments for annotation (supports multi-selection)
+  selectedSegments: Transcript[];
+  setSelectedSegments: (segments: Transcript[]) => void;
+  toggleSegmentSelection: (segment: Transcript) => void;
+  clearSelectedSegments: () => void;
+
+  // Toast notifications
+  showSaveToast: boolean;
+  setShowSaveToast: (show: boolean) => void;
 }
 
 export const useAppStore = create<AppStore>((set) => ({
@@ -67,7 +73,8 @@ export const useAppStore = create<AppStore>((set) => ({
   jumpToTime: null,
   isLoading: false,
   error: null,
-  selectedTranscript: null,
+  selectedSegments: [],
+  showSaveToast: false,
 
   // Actions
   setCurrentState: (state) => set({ currentState: state }),
@@ -96,5 +103,18 @@ export const useAppStore = create<AppStore>((set) => ({
   setIsLoading: (loading) => set({ isLoading: loading }),
   setError: (error) => set({ error }),
 
-  setSelectedTranscript: (transcript) => set({ selectedTranscript: transcript }),
+  setSelectedSegments: (segments) => set({ selectedSegments: segments }),
+  toggleSegmentSelection: (segment) => set((state) => {
+    const isSelected = state.selectedSegments.some(s => s.id === segment.id);
+    if (isSelected) {
+      return { selectedSegments: state.selectedSegments.filter(s => s.id !== segment.id) };
+    } else {
+      // Add segment and sort by start_time to maintain order
+      const newSelection = [...state.selectedSegments, segment].sort((a, b) => a.start_time - b.start_time);
+      return { selectedSegments: newSelection };
+    }
+  }),
+  clearSelectedSegments: () => set({ selectedSegments: [] }),
+  setShowSaveToast: (show) => set({ showSaveToast: show }),
 }));
+

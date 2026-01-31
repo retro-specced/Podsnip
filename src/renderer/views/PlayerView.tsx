@@ -3,6 +3,10 @@ import { useAppStore } from '../store/appStore';
 import { Transcript } from '../../shared/types';
 import '../styles/PlayerView.css';
 
+// Module-level to persist across remounts
+let lastKnownEpisodeId: number | null = null;
+let lastKnownTime: number = 0;
+
 function PlayerView() {
   const {
     currentEpisode,
@@ -16,9 +20,14 @@ function PlayerView() {
     setCurrentTime,
     setPlaybackSpeed,
     setJumpToTime,
-    setSelectedTranscript,
+    selectedSegments,
+    toggleSegmentSelection,
+    clearSelectedSegments,
+    setSelectedSegments,
     setCurrentState,
     setError,
+    showSaveToast,
+    setShowSaveToast,
   } = useAppStore();
 
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -33,23 +42,41 @@ function PlayerView() {
   const [isBuffering, setIsBuffering] = useState(false);
   const pendingSeekTimeRef = useRef<number | null>(null);
   const hasJumpedRef = useRef(false);
+  const lastClickedIndexRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (currentEpisode) {
+      const isNewEpisode = lastKnownEpisodeId !== currentEpisode.id;
+      const isReturningFromAnnotation = !isNewEpisode && lastKnownTime > 0;
+
+      // Update module-level tracking
+      lastKnownEpisodeId = currentEpisode.id;
+
+      if (isReturningFromAnnotation) {
+        // Coming back from annotation view - restore audio position
+        loadTranscript();
+        if (audioRef.current) {
+          audioRef.current.currentTime = lastKnownTime;
+        }
+        return;
+      }
+
+      // New episode - full setup
       setAudioError(null);
-      setIsLoadingEpisode(true); // Show loading screen
+      setIsLoadingEpisode(true);
       loadTranscript();
 
       // Only reset currentTime if we're not in the middle of a jump from notes
       if (pendingSeekTimeRef.current === null) {
         setCurrentTime(0);
-        setIsPlaying(false); // Pause when switching episodes normally
+        setIsPlaying(false);
+        lastKnownTime = 0;
       }
 
       loadPlaybackState();
-      hasJumpedRef.current = false; // Reset jump flag for new episode
+      hasJumpedRef.current = false;
 
-      // Load audio
+      // Load the new audio
       if (audioRef.current) {
         audioRef.current.load();
       }
@@ -68,6 +95,16 @@ function PlayerView() {
 
     return () => clearInterval(interval);
   }, [currentEpisode, currentTime, playbackSpeed]);
+
+  // Auto-dismiss save toast
+  useEffect(() => {
+    if (showSaveToast) {
+      const timer = setTimeout(() => {
+        setShowSaveToast(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [showSaveToast]);
 
   useEffect(() => {
     if (audioRef.current) {
@@ -196,6 +233,7 @@ function PlayerView() {
 
     const time = audioRef.current.currentTime;
     setCurrentTime(time);
+    lastKnownTime = time; // Track for remounts
 
     // Find active transcript segment
     const activeIndex = transcripts.findIndex(
@@ -216,17 +254,35 @@ function PlayerView() {
     audioRef.current.currentTime += seconds;
   };
 
-  const handleSegmentClick = (segment: Transcript) => {
-    if (!audioRef.current) return;
+  const handleSegmentClick = (segment: Transcript, index: number, event: React.MouseEvent) => {
+    // Shift+click for range selection
+    if (event.shiftKey && lastClickedIndexRef.current !== null) {
+      const start = Math.min(lastClickedIndexRef.current, index);
+      const end = Math.max(lastClickedIndexRef.current, index);
+      const rangeSegments = transcripts.slice(start, end + 1);
+      setSelectedSegments(rangeSegments);
+    } else {
+      // Regular click toggles selection
+      toggleSegmentSelection(segment);
+      lastClickedIndexRef.current = index;
+    }
+  };
 
-    // Jump to timestamp
-    audioRef.current.currentTime = segment.start_time;
+  const handleTakeNote = () => {
+    if (selectedSegments.length === 0) return;
 
-    // Pause and enter annotation mode
-    audioRef.current.pause();
-    setIsPlaying(false);
-    setSelectedTranscript(segment);
+    // Pause audio and go to annotation view
+    if (audioRef.current) {
+      audioRef.current.pause();
+      setIsPlaying(false);
+      // Jump to start of first selected segment
+      audioRef.current.currentTime = selectedSegments[0].start_time;
+    }
     setCurrentState('annotation');
+  };
+
+  const isSegmentSelected = (segmentId: number) => {
+    return selectedSegments.some(s => s.id === segmentId);
   };
 
   const formatTime = (seconds: number) => {
@@ -403,19 +459,32 @@ function PlayerView() {
               </div>
             </div>
           ) : transcripts.length > 0 ? (
-            <div className="transcript-segments">
-              {transcripts.map((segment, index) => (
-                <div
-                  key={segment.id}
-                  className={`transcript-segment ${index === activeSegmentIndex ? 'active' : ''} ${index < activeSegmentIndex ? 'past' : ''
-                    } ${index > activeSegmentIndex ? 'future' : ''}`}
-                  onClick={() => handleSegmentClick(segment)}
-                >
-                  <span className="segment-time">{formatTime(segment.start_time)}</span>
-                  <span className="segment-text">{segment.text}</span>
+            <>
+              <div className="transcript-segments">
+                {transcripts.map((segment, index) => (
+                  <div
+                    key={segment.id}
+                    className={`transcript-segment ${index === activeSegmentIndex ? 'active' : ''} ${index < activeSegmentIndex ? 'past' : ''
+                      } ${index > activeSegmentIndex ? 'future' : ''} ${isSegmentSelected(segment.id) ? 'selected' : ''}`}
+                    onClick={(e) => handleSegmentClick(segment, index, e)}
+                  >
+                    <span className="segment-time">{formatTime(segment.start_time)}</span>
+                    <span className="segment-text">{segment.text}</span>
+                  </div>
+                ))}
+              </div>
+              {selectedSegments.length > 0 && (
+                <div className="selection-toolbar">
+                  <span className="selection-count">{selectedSegments.length} segment{selectedSegments.length > 1 ? 's' : ''} selected</span>
+                  <button className="clear-selection-button" onClick={clearSelectedSegments}>
+                    Clear
+                  </button>
+                  <button className="take-note-button" onClick={handleTakeNote}>
+                    ✏️ Take Note
+                  </button>
                 </div>
-              ))}
-            </div>
+              )}
+            </>
           ) : (
             <div className="transcript-empty">
               <p>No transcript available yet.</p>
@@ -427,6 +496,14 @@ function PlayerView() {
           )}
         </div>
       </div>
+
+      {/* Save confirmation toast */}
+      {showSaveToast && (
+        <div className="save-toast">
+          <span className="save-toast-icon">✓</span>
+          <span className="save-toast-text">Note saved successfully!</span>
+        </div>
+      )}
     </div>
   );
 }

@@ -37,6 +37,9 @@ export interface Annotation {
   id: number;
   transcript_id: number;
   note_text: string;
+  transcript_text: string;
+  start_time: number;
+  end_time: number;
   created_at: string;
   updated_at: string;
   tags: string;
@@ -90,7 +93,14 @@ declare global {
         removeProgressListener: () => void;
       };
       annotation: {
-        create: (data: { transcriptId: number; noteText: string; tags?: string[] }) => Promise<number>;
+        create: (data: {
+          transcriptId: number;
+          noteText: string;
+          transcriptText: string;
+          startTime: number;
+          endTime: number;
+          tags?: string[]
+        }) => Promise<number>;
         list: (episodeId?: number) => Promise<Annotation[]>;
         update: (annotationId: number, noteText: string, tags?: string[]) => Promise<void>;
         delete: (annotationId: number) => Promise<void>;

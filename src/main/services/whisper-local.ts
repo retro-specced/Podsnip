@@ -404,7 +404,14 @@ Model sizes:
     try {
       // Parse SRT format: [HH:MM:SS.mmm --> HH:MM:SS.mmm]   text
       const lines = output.split('\n');
-      let segmentIndex = 0;
+
+      // First pass: collect all raw segments with timing
+      interface RawSegment {
+        startTime: number;
+        endTime: number;
+        text: string;
+      }
+      const rawSegments: RawSegment[] = [];
 
       for (const line of lines) {
         const match = line.match(/^\[(\d{2}):(\d{2}):(\d{2})\.(\d{3})\s*-->\s*(\d{2}):(\d{2}):(\d{2})\.(\d{3})\]\s*(.+)$/);
@@ -419,24 +426,76 @@ Model sizes:
           const cleanText = text.replace(/\u001b\[\d+(;\d+)*m/g, '').trim();
 
           if (cleanText) {
-            db.insertTranscript({
-              episode_id: episodeId,
-              segment_index: segmentIndex++,
-              start_time: startTime,
-              end_time: endTime,
-              text: cleanText,
-              confidence_score: 0.9,
-            });
+            rawSegments.push({ startTime, endTime, text: cleanText });
           }
         }
       }
 
-      if (segmentIndex === 0) {
+      if (rawSegments.length === 0) {
         console.error('No segments found in output:', output.substring(0, 500));
         throw new Error('No transcript segments were extracted');
       }
 
-      console.log(`Stored ${segmentIndex} transcript segments`);
+      // Second pass: merge into sentences
+      // A sentence ends with . ? ! followed by space or end of text
+      const sentences: RawSegment[] = [];
+      let currentSentence = {
+        startTime: rawSegments[0].startTime,
+        endTime: rawSegments[0].endTime,
+        text: ''
+      };
+
+      for (const segment of rawSegments) {
+        // Add space between segments if needed
+        if (currentSentence.text && !currentSentence.text.endsWith(' ')) {
+          currentSentence.text += ' ';
+        }
+        currentSentence.text += segment.text;
+        currentSentence.endTime = segment.endTime;
+
+        // Check if this segment ends with sentence-ending punctuation
+        const endsWithSentence = /[.!?][\s]*$/.test(segment.text);
+
+        if (endsWithSentence) {
+          // Finalize this sentence
+          sentences.push({
+            startTime: currentSentence.startTime,
+            endTime: currentSentence.endTime,
+            text: currentSentence.text.trim()
+          });
+
+          // Start new sentence (will use next segment's start time)
+          currentSentence = {
+            startTime: segment.endTime,
+            endTime: segment.endTime,
+            text: ''
+          };
+        }
+      }
+
+      // Don't forget the last sentence if it doesn't end with punctuation
+      if (currentSentence.text.trim()) {
+        sentences.push({
+          startTime: currentSentence.startTime,
+          endTime: currentSentence.endTime,
+          text: currentSentence.text.trim()
+        });
+      }
+
+      // Store sentences as transcript segments
+      let segmentIndex = 0;
+      for (const sentence of sentences) {
+        db.insertTranscript({
+          episode_id: episodeId,
+          segment_index: segmentIndex++,
+          start_time: sentence.startTime,
+          end_time: sentence.endTime,
+          text: sentence.text,
+          confidence_score: 0.9,
+        });
+      }
+
+      console.log(`Stored ${segmentIndex} sentence-level transcript segments (from ${rawSegments.length} raw segments)`);
     } catch (error) {
       console.error('Failed to parse whisper output:', output.substring(0, 500));
       throw new Error(`Failed to parse transcription: ${error instanceof Error ? error.message : 'Unknown error'}`);
