@@ -6,7 +6,7 @@ import PlayerView from './views/PlayerView';
 import AnnotationView from './views/AnnotationView';
 import NotesView from './views/NotesView';
 import SettingsView from './views/SettingsView';
-import Sidebar from './components/Sidebar';
+import TopBar from './components/TopBar';
 import ErrorBanner from './components/ErrorBanner';
 import './styles/App.css';
 
@@ -22,7 +22,7 @@ function App() {
     try {
       const podcasts = await window.api.podcast.list();
       setPodcasts(podcasts);
-      
+
       // If we have podcasts, move to browsing state
       if (podcasts.length > 0 && currentState === 'onboarding') {
         setCurrentState('browsing');
@@ -53,7 +53,7 @@ function App() {
 
   return (
     <div className="app">
-      {currentState !== 'onboarding' && <Sidebar />}
+      {currentState !== 'onboarding' && <TopBar />}
       <div className="main-content">
         <ErrorBanner />
         {renderView()}
