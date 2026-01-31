@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useLayoutEffect } from 'react';
+import { useEffect, useState, useRef, useLayoutEffect, useMemo } from 'react';
 import { useAppStore } from '../store/appStore';
 import { Episode } from '../../shared/types';
 import AddPodcastModal from '../components/AddPodcastModal';
@@ -111,11 +111,13 @@ function BrowsingView() {
     setCurrentState('player');
   };
 
-  const getSortedEpisodes = () => {
+  const sortedEpisodes = useMemo(() => {
     let sorted = [...episodes];
 
     switch (sortBy) {
       case 'newest':
+        // Optimization: Date parsing can be slow in sort, but usually acceptable for <1000 items.
+        // For larger lists, pre-calculating timestamps would be better.
         sorted.sort((a, b) => new Date(b.published_date).getTime() - new Date(a.published_date).getTime());
         break;
       case 'oldest':
@@ -130,15 +132,16 @@ function BrowsingView() {
     }
 
     if (searchQuery) {
+      const lowerQuery = searchQuery.toLowerCase();
       sorted = sorted.filter(
         (ep) =>
-          ep.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          ep.description.toLowerCase().includes(searchQuery.toLowerCase())
+          ep.title.toLowerCase().includes(lowerQuery) ||
+          ep.description.toLowerCase().includes(lowerQuery)
       );
     }
 
     return sorted;
-  };
+  }, [episodes, sortBy, searchQuery]);
 
   const formatDuration = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
@@ -155,26 +158,21 @@ function BrowsingView() {
   };
 
   const truncateHtml = (html: string, maxLength: number) => {
-    // Replace common HTML tags with spaces to preserve word boundaries
-    const textWithSpaces = html
-      .replace(/<\/p>/gi, ' ')
-      .replace(/<br\s*\/?>/gi, ' ')
-      .replace(/<\/div>/gi, ' ')
-      .replace(/<\/li>/gi, ' ')
-      .replace(/<\/h[1-6]>/gi, ' ');
+    if (!html) return '';
 
-    // Create a temporary div to extract plain text
-    const tmp = document.createElement('div');
-    tmp.innerHTML = textWithSpaces;
-    const text = (tmp.textContent || tmp.innerText || '')
-      .replace(/\s+/g, ' ') // Replace multiple spaces with single space
+    // Optimized: Use regex instead of DOM creation to strip HTML
+    // This avoids main-thread blocking DOM operations during render
+    const text = html
+      .replace(/<br\s*\/?>/gi, ' ')
+      .replace(/<\/(p|div|li|h[1-6])>/gi, ' ') // Add space after block elements
+      .replace(/<[^>]+>/g, '') // Strip all tags
+      .replace(/\s+/g, ' ')    // Collapse multiple spaces
       .trim();
 
     if (text.length <= maxLength) {
       return text;
     }
 
-    // Truncate and add ellipsis
     return text.substring(0, maxLength).trim() + '...';
   };
 
@@ -263,7 +261,7 @@ function BrowsingView() {
             </div>
 
             <div className="episodes-list" ref={scrollContainerRef}>
-              {getSortedEpisodes().map((episode) => (
+              {sortedEpisodes.map((episode) => (
                 <div key={episode.id} className="episode-item">
                   <div className="episode-content">
                     <h3 className="episode-title">{episode.title}</h3>
