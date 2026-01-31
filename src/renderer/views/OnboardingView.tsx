@@ -5,11 +5,11 @@ import '../styles/OnboardingView.css';
 function OnboardingView() {
   const [feedUrl, setFeedUrl] = useState('');
   const [isAdding, setIsAdding] = useState(false);
-  const { addPodcast, setCurrentState, setError } = useAppStore();
+  const { addPodcast, navigateToView, setError } = useAppStore();
 
   const handleAddPodcast = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!feedUrl.trim()) {
       setError('Please enter a podcast feed URL');
       return;
@@ -22,9 +22,10 @@ function OnboardingView() {
       const podcast = await window.api.podcast.add(feedUrl);
       addPodcast(podcast);
       setFeedUrl('');
-      
+
       // Move to browsing state after successfully adding first podcast
-      setCurrentState('browsing');
+      // REPLACE history so user can't go back to onboarding
+      navigateToView('browsing', { replace: true });
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to add podcast');
     } finally {
