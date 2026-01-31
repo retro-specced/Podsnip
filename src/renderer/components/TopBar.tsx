@@ -59,7 +59,7 @@ function TopBar() {
                     </button>
                     <button
                         className={`nav-link ${currentState === 'notes' ? 'active' : ''}`}
-                        onClick={() => navigateToView('notes')}
+                        onClick={() => navigateToView('notes', { episodeId: null })}
                     >
                         <span className="nav-icon">📝</span>
                         Notes

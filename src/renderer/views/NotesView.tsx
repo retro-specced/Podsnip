@@ -28,13 +28,13 @@ function NotesView() {
     annotations,
     setAnnotations,
     setError,
-    setCurrentState,
-    setCurrentEpisode,
+    viewingEpisode,
+    setViewingEpisode,
+    setPlayingEpisode,
     setJumpToTime,
     setCurrentPodcast,
     setEpisodes,
-    currentPodcast, // needed for deep link initialization
-    currentEpisode, // needed for scrolling to specific episode
+    navigateToView,
   } = useAppStore();
   const [filteredAnnotations, setFilteredAnnotations] = useState<EnrichedAnnotation[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -42,9 +42,10 @@ function NotesView() {
   const [timeRange, setTimeRange] = useState<'all' | 'today' | 'week' | 'month' | 'year'>('all');
 
 
-  // Initialize selectedPodcastId from store if present (supports deep linking)
-  const [selectedPodcastId, setSelectedPodcastId] = useState<number | null>(currentPodcast?.id || null);
-  const [viewMode, setViewMode] = useState<'masonry' | 'podcasts'>(selectedPodcastId ? 'podcasts' : 'masonry');
+  // Initialize view mode and selected podcast
+  // Default to 'masonry' (All Notes) unless specifically deep-linking to an episode
+  const [selectedPodcastId, setSelectedPodcastId] = useState<number | null>(viewingEpisode ? viewingEpisode.podcast_id : null);
+  const [viewMode, setViewMode] = useState<'masonry' | 'podcasts'>(viewingEpisode ? 'podcasts' : 'masonry');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
   // Ref for scrolling to deep-linked episode
@@ -59,17 +60,17 @@ function NotesView() {
 
   // Scroll to deep-linked episode if present
   useEffect(() => {
-    if (selectedPodcastId && currentEpisode?.id && viewMode === 'podcasts') {
+    if (selectedPodcastId && viewingEpisode?.id && viewMode === 'podcasts') {
       // Wait for render
       setTimeout(() => {
-        const element = episodeRefs.current[currentEpisode.id];
+        const element = episodeRefs.current[viewingEpisode.id];
         if (element) {
           element.scrollIntoView({ behavior: 'smooth', block: 'start' });
           // Highlight effect?
         }
       }, 100);
     }
-  }, [selectedPodcastId, currentEpisode?.id, viewMode, filteredAnnotations]); // Depend on filteredAnnotations to ensure content is loaded
+  }, [selectedPodcastId, viewingEpisode?.id, viewMode, filteredAnnotations]); // Depend on filteredAnnotations to ensure content is loaded
 
   useEffect(() => {
     loadAnnotations();
@@ -221,14 +222,17 @@ function NotesView() {
       setCurrentPodcast(podcast);
       setEpisodes(episodes);
 
-      // Set the current episode
-      setCurrentEpisode(episode);
+      // Set the viewing episode
+      setViewingEpisode(episode);
 
-      // Set the jump time (this will be handled by PlayerView)
+      // Set the playing episode to actually start audio
+      setPlayingEpisode(episode);
+
+      // Set the jump time
       setJumpToTime(annotation.start_time);
 
-      // Navigate to player view
-      setCurrentState('player');
+      // Navigate to player view using unified navigation
+      navigateToView('player', { episodeId: episode.id, podcastId: podcast.id });
     } catch (error) {
       setError('Failed to jump to podcast');
     }

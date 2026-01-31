@@ -18,8 +18,6 @@ export default function GlobalAudioController() {
     } = useAppStore();
 
     const audioRef = useRef<HTMLAudioElement>(null);
-    const [isBuffering, setIsBuffering] = useState(false);
-    const [audioError, setAudioError] = useState<string | null>(null);
 
     // Ref to track if we've handled the initial seek for a new episode (e.g. restore/jump)
     const hasInitializedSeekRef = useRef(false);
@@ -44,7 +42,6 @@ export default function GlobalAudioController() {
                 if (audioRef.current) {
                     // Reset state for new episode
                     hasInitializedSeekRef.current = false;
-                    setAudioError(null);
 
                     // Load new source
                     audioRef.current.load();
@@ -95,12 +92,14 @@ export default function GlobalAudioController() {
 
     // 4. Handle Seeks / JumpToTime actions
     useEffect(() => {
-        if (audioRef.current && jumpToTime !== null && jumpToTime >= 0) {
+        // Only trigger if audio element is ready (readyState > 0 means metadata is available)
+        if (audioRef.current && audioRef.current.readyState >= 1 && jumpToTime !== null && jumpToTime >= 0) {
+            console.log("Applying jumpToTime:", jumpToTime);
             audioRef.current.currentTime = jumpToTime;
             setJumpToTime(null); // Clear the jump trigger
             setIsPlaying(true);
         }
-    }, [jumpToTime]);
+    }, [jumpToTime, playingEpisode?.id]);
 
     // 6. Global Transcription Listeners
     useEffect(() => {
@@ -163,12 +162,23 @@ export default function GlobalAudioController() {
     const handleLoadedMetadata = async () => {
         if (!audioRef.current || !playingEpisode) return;
 
+        // PRIORITIZE jumpToTime if one is pending during episode switch
+        if (jumpToTime !== null && jumpToTime >= 0) {
+            console.log("Metadata loaded: Applying pending jumpToTime:", jumpToTime);
+            audioRef.current.currentTime = jumpToTime;
+            setJumpToTime(null);
+            setIsPlaying(true);
+            hasInitializedSeekRef.current = true;
+            return;
+        }
+
         // Restore Saved Position if this is a fresh load (not a seek)
         // and we haven't jumped yet.
-        if (!hasInitializedSeekRef.current && jumpToTime === null) {
+        if (!hasInitializedSeekRef.current) {
             try {
                 const state = await window.api.playback.get(playingEpisode.id);
                 if (state && state.current_position > 0 && state.current_position < (playingEpisode.duration - 5)) {
+                    console.log("Metadata loaded: Restoring position:", state.current_position);
                     audioRef.current.currentTime = state.current_position;
                     setPlaybackSpeed(state.playback_speed);
                 }
@@ -190,12 +200,11 @@ export default function GlobalAudioController() {
             onLoadedMetadata={handleLoadedMetadata}
             onError={(e) => {
                 console.error("Global Audio Error:", e);
-                setAudioError("Playback failed"); // Could utilize central error store
                 setIsPlaying(false);
             }}
-            onWaiting={() => setIsBuffering(true)}
-            onCanPlay={() => setIsBuffering(false)}
-            onPlaying={() => setIsBuffering(false)}
+            onWaiting={() => { }}
+            onCanPlay={() => { }}
+            onPlaying={() => { }}
             crossOrigin="anonymous"
             style={{ display: 'none' }}
         />

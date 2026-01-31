@@ -10,6 +10,7 @@ export interface Podcast {
   artwork_url: string;
   last_updated: string;
   category?: string;
+  has_new?: boolean;
 }
 
 export interface Episode {
@@ -201,34 +202,55 @@ export class DatabaseService {
     if (!hasCategory) {
       this.db.exec(`ALTER TABLE podcasts ADD COLUMN category TEXT DEFAULT ''`);
     }
+
+    const hasHasNew = podcastColumns.some((col) => col.name === 'has_new');
+    if (!hasHasNew) {
+      this.db.exec(`ALTER TABLE podcasts ADD COLUMN has_new INTEGER DEFAULT 0`);
+    }
   }
 
   // Podcast methods
   insertPodcast(podcast: Omit<Podcast, 'id' | 'last_updated'>): number {
     const stmt = this.db.prepare(`
-      INSERT INTO podcasts (feed_url, title, description, author, artwork_url, category)
-      VALUES (@feed_url, @title, @description, @author, @artwork_url, @category)
+      INSERT INTO podcasts (feed_url, title, description, author, artwork_url, category, has_new)
+      VALUES (@feed_url, @title, @description, @author, @artwork_url, @category, @has_new)
     `);
     const info = stmt.run({
       ...podcast,
-      category: podcast.category || ''
+      category: podcast.category || '',
+      has_new: podcast.has_new ? 1 : 0
     });
     return info.lastInsertRowid as number;
   }
 
   getPodcast(id: number): Podcast | undefined {
     const stmt = this.db.prepare('SELECT * FROM podcasts WHERE id = ?');
-    return stmt.get(id) as Podcast | undefined;
+    const result = stmt.get(id) as any;
+    if (result) {
+      return { ...result, has_new: Boolean(result.has_new) };
+    }
+    return undefined;
   }
 
   getAllPodcasts(): Podcast[] {
     const stmt = this.db.prepare('SELECT * FROM podcasts ORDER BY last_updated DESC');
-    return stmt.all() as Podcast[];
+    const results = stmt.all() as any[];
+    return results.map(p => ({ ...p, has_new: Boolean(p.has_new) }));
   }
 
   deletePodcast(id: number): void {
     const stmt = this.db.prepare('DELETE FROM podcasts WHERE id = ?');
     stmt.run(id);
+  }
+
+  updatePodcastLastUpdated(id: number): void {
+    const stmt = this.db.prepare('UPDATE podcasts SET last_updated = CURRENT_TIMESTAMP WHERE id = ?');
+    stmt.run(id);
+  }
+
+  updatePodcastHasNew(id: number, hasNew: boolean): void {
+    const stmt = this.db.prepare('UPDATE podcasts SET has_new = ? WHERE id = ?');
+    stmt.run(hasNew ? 1 : 0, id);
   }
 
   // Episode methods

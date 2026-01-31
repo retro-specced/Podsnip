@@ -38,10 +38,24 @@ function App() {
       if (podcasts.length > 0 && currentState === 'onboarding') {
         navigateToView('browsing', { replace: true });
       }
+
+      // Check for updates once at startup
+      triggerAutoRefresh();
     } catch (error) {
       console.error('Failed to load podcasts:', error);
     } finally {
       setIsInitializing(false);
+    }
+  };
+
+  const triggerAutoRefresh = async () => {
+    try {
+      await window.api.podcast.refreshAll();
+      // Reload podcasts to get updated has_new status
+      const updatedPodcasts = await window.api.podcast.list();
+      setPodcasts(updatedPodcasts);
+    } catch (err) {
+      console.error('Auto-refresh failed:', err);
     }
   };
 

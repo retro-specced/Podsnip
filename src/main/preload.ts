@@ -9,6 +9,8 @@ contextBridge.exposeInMainWorld('api', {
     get: (podcastId: number) => ipcRenderer.invoke('podcast:get', podcastId),
     delete: (podcastId: number) => ipcRenderer.invoke('podcast:delete', podcastId),
     refresh: (podcastId: number) => ipcRenderer.invoke('podcast:refresh', podcastId),
+    refreshAll: () => ipcRenderer.invoke('podcast:refresh-all'),
+    clearNew: (podcastId: number) => ipcRenderer.invoke('podcast:clear-new', podcastId),
   },
 
   // Episode API

@@ -9,6 +9,7 @@ export interface Podcast {
   artwork_url: string;
   last_updated: string;
   category?: string;
+  has_new?: boolean;
 }
 
 export interface Episode {
@@ -84,7 +85,9 @@ declare global {
         list: () => Promise<Podcast[]>;
         get: (podcastId: number) => Promise<Podcast>;
         delete: (podcastId: number) => Promise<void>;
-        refresh: (podcastId: number) => Promise<void>;
+        refresh: (podcastId: number) => Promise<number>;
+        refreshAll: () => Promise<{ id: number, newCount: number }[]>;
+        clearNew: (podcastId: number) => Promise<void>;
       };
       episode: {
         list: (podcastId: number) => Promise<Episode[]>;

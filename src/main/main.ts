@@ -85,6 +85,14 @@ ipcMain.handle('podcast:refresh', async (_, podcastId: number) => {
   return await podcastService.refreshPodcastFeed(podcastId);
 });
 
+ipcMain.handle('podcast:refresh-all', async () => {
+  return await podcastService.refreshAllPodcasts();
+});
+
+ipcMain.handle('podcast:clear-new', async (_, podcastId: number) => {
+  return db.updatePodcastHasNew(podcastId, false);
+});
+
 // IPC Handlers for Episodes
 ipcMain.handle('episode:list', async (_, podcastId: number) => {
   return await podcastService.getEpisodes(podcastId);

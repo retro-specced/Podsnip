@@ -32,6 +32,9 @@ function BrowsingView() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [visibleCount, setVisibleCount] = useState(20);
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [refreshMessage, setRefreshMessage] = useState<string | null>(null);
+  const [showRefreshMessage, setShowRefreshMessage] = useState(false);
 
   useEffect(() => {
     // Select first podcast by default only if no podcasts are selected
@@ -103,6 +106,13 @@ function BrowsingView() {
       // Save selection to current history snapshot
       updateCurrentSnapshot({ podcast });
 
+      // Clear new indicator if present
+      if (podcast?.has_new) {
+        await window.api.podcast.clearNew(podcastId);
+        // Update local state for immediate feedback
+        setPodcasts(podcasts.map(p => p.id === podcastId ? { ...p, has_new: false } : p));
+      }
+
       // Note: Episodes are loaded by the useEffect above
     } catch (error) {
       setError('Failed to load podcast details');
@@ -144,6 +154,46 @@ function BrowsingView() {
     // Only set VIEWING episode, do not auto-play
     setViewingEpisode(episode);
     setCurrentState('player');
+  };
+
+  const handleRefreshPodcast = async () => {
+    if (!currentPodcast || isRefreshing) return;
+
+    setIsRefreshing(true);
+    setError(null);
+
+    try {
+      const newCount = await window.api.podcast.refresh(currentPodcast.id);
+
+      // Update message based on results
+      if (newCount > 0) {
+        setRefreshMessage(`${newCount} new episode${newCount > 1 ? 's' : ''}`);
+      } else {
+        setRefreshMessage('Up to date!');
+      }
+      setShowRefreshMessage(true);
+
+      // Re-fetch podcast and episodes to update UI
+      const updatedPodcast = await window.api.podcast.get(currentPodcast.id);
+      const updatedEpisodes = await window.api.episode.list(currentPodcast.id);
+
+      setCurrentPodcast(updatedPodcast);
+      setEpisodes(updatedEpisodes);
+
+      // Update podcasts list as well (for last_updated date in side list if sorted)
+      const allPodcasts = await window.api.podcast.list();
+      setPodcasts(allPodcasts);
+
+      // Revert after 5 seconds
+      setTimeout(() => {
+        setShowRefreshMessage(false);
+      }, 5000);
+
+    } catch (err: any) {
+      setError(err.message || 'Failed to refresh podcast');
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   const sortedEpisodes = useMemo(() => {
@@ -240,6 +290,7 @@ function BrowsingView() {
                   <h3 className="podcast-title">{podcast.title}</h3>
                   <p className="podcast-author">{podcast.author}</p>
                 </div>
+                {podcast.has_new && <div className="unread-dot" title="New episodes available" />}
               </button>
               <button
                 className="delete-podcast-button"
@@ -257,6 +308,27 @@ function BrowsingView() {
         {currentPodcast ? (
           <>
             <div className="podcast-header">
+              <div className="podcast-header-top">
+                <div className="podcast-meta">
+                  <h1 className="podcast-title-large">{currentPodcast.title}</h1>
+                  <p className="podcast-author-large">{currentPodcast.author}</p>
+                </div>
+
+                <div className="podcast-refresh-container">
+                  <span className={`refresh-status-message ${showRefreshMessage ? 'highlight' : ''}`}>
+                    {showRefreshMessage ? refreshMessage : `Last Updated: ${formatDate(currentPodcast.last_updated)} ${new Date(currentPodcast.last_updated).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
+                  </span>
+                  <button
+                    className={`refresh-button ${isRefreshing ? 'spinning' : ''}`}
+                    onClick={handleRefreshPodcast}
+                    disabled={isRefreshing}
+                    title="Refresh episodes"
+                  >
+                    🔄
+                  </button>
+                </div>
+              </div>
+
               <div className="podcast-details">
                 {currentPodcast.artwork_url && (
                   <img
@@ -266,9 +338,6 @@ function BrowsingView() {
                   />
                 )}
                 <div className="podcast-meta">
-                  <h1 className="podcast-title-large">{currentPodcast.title}</h1>
-                  <p className="podcast-author-large">{currentPodcast.author}</p>
-
                   <div className={`podcast-description-container ${isDescriptionExpanded ? 'expanded' : ''}`}>
                     <div
                       className="podcast-description"

@@ -61,7 +61,7 @@ export class PodcastService {
     }
   }
 
-  async refreshPodcastFeed(podcastId: number): Promise<void> {
+  async refreshPodcastFeed(podcastId: number): Promise<number> {
     const podcast = this.db.getPodcast(podcastId);
     if (!podcast) {
       throw new Error('Podcast not found');
@@ -78,6 +78,8 @@ export class PodcastService {
       // Get existing episodes to avoid duplicates
       const existingEpisodes = this.db.getEpisodesByPodcast(podcastId);
       const existingUrls = new Set(existingEpisodes.map(ep => ep.audio_url));
+
+      let newCount = 0;
 
       // Insert only new episodes
       for (const item of feedData.items) {
@@ -97,8 +99,18 @@ export class PodcastService {
             download_status: 'none',
             local_path: null,
           });
+          newCount++;
         }
       }
+
+      // Update last_updated timestamp even if no new episodes
+      this.db.updatePodcastLastUpdated(podcastId);
+
+      if (newCount > 0) {
+        this.db.updatePodcastHasNew(podcastId, true);
+      }
+
+      return newCount;
     } catch (error) {
       console.error('Error refreshing podcast feed:', error);
       throw new Error(`Failed to refresh podcast feed: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -246,5 +258,21 @@ export class PodcastService {
 
   getEpisode(episodeId: number): Episode | undefined {
     return this.db.getEpisode(episodeId);
+  }
+
+  async refreshAllPodcasts(): Promise<{ id: number, newCount: number }[]> {
+    const podcasts = this.db.getAllPodcasts();
+    const results = [];
+
+    for (const podcast of podcasts) {
+      try {
+        const newCount = await this.refreshPodcastFeed(podcast.id);
+        results.push({ id: podcast.id, newCount });
+      } catch (error) {
+        console.error(`Error refreshing podcast ${podcast.id}:`, error);
+      }
+    }
+
+    return results;
   }
 }
