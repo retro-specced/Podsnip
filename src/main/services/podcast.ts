@@ -23,6 +23,7 @@ export class PodcastService {
         description: feedData.description || '',
         author: feedData.author || '',
         artwork_url: feedData.image?.url || '',
+        category: feedData.categories ? (feedData.categories[0] || '') : '', // Taking first category
       });
 
       // Insert episodes

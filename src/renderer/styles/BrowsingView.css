@@ -338,3 +338,93 @@
   transform: translateY(-2px);
   box-shadow: var(--shadow);
 }
+
+/* ... previous styles ... */
+
+.podcast-details {
+  display: flex;
+  gap: var(--spacing-xl);
+  align-items: flex-start;
+  /* Ensure proper alignment */
+}
+
+.podcast-meta {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  /* Ensure it fills height if needed, but flex-start is safer for varying content */
+}
+
+.podcast-description-container {
+  margin-bottom: var(--spacing-sm);
+  position: relative;
+}
+
+.podcast-description {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  line-height: 1.6;
+
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.podcast-description-container.expanded .podcast-description {
+  -webkit-line-clamp: unset;
+}
+
+.show-more-btn {
+  background: none;
+  border: none;
+  color: var(--primary-color);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: var(--spacing-md);
+  align-self: flex-start;
+}
+
+.show-more-btn:hover {
+  text-decoration: underline;
+}
+
+.podcast-meta-bubbles {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-top: auto;
+  /* Push to bottom if container has height */
+  flex-wrap: wrap;
+}
+
+.meta-bubble {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 100px;
+  /* Pillow shape */
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  white-space: nowrap;
+}
+
+/* Optional: Different colors for types of bubbles */
+.episode-count-bubble {
+  /* Default style */
+}
+
+.category-bubble {
+  color: var(--primary-color);
+  border-color: var(--primary-color-dim, rgba(0, 102, 255, 0.2));
+  background: rgba(0, 102, 255, 0.05);
+}
+
+.podcast-stats {
+  display: none;
+  /* Hide old stats */
+}

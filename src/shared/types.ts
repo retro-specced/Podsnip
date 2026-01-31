@@ -8,6 +8,7 @@ export interface Podcast {
   author: string;
   artwork_url: string;
   last_updated: string;
+  category?: string;
 }
 
 export interface Episode {

@@ -29,6 +29,7 @@ function BrowsingView() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [visibleCount, setVisibleCount] = useState(20);
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
 
   useEffect(() => {
     // Select first podcast by default only if no podcasts are selected
@@ -53,6 +54,11 @@ function BrowsingView() {
     if (currentPodcast) {
       loadEpisodes();
     }
+  }, [currentPodcast?.id]);
+
+  // Reset description expansion when podcast changes
+  useEffect(() => {
+    setIsDescriptionExpanded(false);
   }, [currentPodcast?.id]);
 
   // Restore scroll position and visible count
@@ -259,12 +265,32 @@ function BrowsingView() {
                 <div className="podcast-meta">
                   <h1 className="podcast-title-large">{currentPodcast.title}</h1>
                   <p className="podcast-author-large">{currentPodcast.author}</p>
-                  <p
-                    className="podcast-description"
-                    dangerouslySetInnerHTML={{ __html: currentPodcast.description }}
-                  />
-                  <div className="podcast-stats">
-                    <span>{episodes.length} episodes</span>
+
+                  <div className={`podcast-description-container ${isDescriptionExpanded ? 'expanded' : ''}`}>
+                    <div
+                      className="podcast-description"
+                      dangerouslySetInnerHTML={{ __html: currentPodcast.description }}
+                    />
+                  </div>
+
+                  {truncateHtml(currentPodcast.description, 1000).length > 200 && (
+                    <button
+                      className="show-more-btn"
+                      onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+                    >
+                      {isDescriptionExpanded ? 'Show Less' : 'Show More'}
+                    </button>
+                  )}
+
+                  <div className="podcast-meta-bubbles">
+                    <span className="meta-bubble episode-count-bubble">
+                      {episodes.length} Episodes
+                    </span>
+                    {currentPodcast.category && (
+                      <span className="meta-bubble category-bubble">
+                        {currentPodcast.category}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>

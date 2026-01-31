@@ -9,6 +9,7 @@ export interface Podcast {
   author: string;
   artwork_url: string;
   last_updated: string;
+  category?: string;
 }
 
 export interface Episode {
@@ -73,7 +74,10 @@ export class DatabaseService {
         description TEXT,
         author TEXT,
         artwork_url TEXT,
-        last_updated TEXT DEFAULT CURRENT_TIMESTAMP
+        author TEXT,
+        artwork_url TEXT,
+        last_updated TEXT DEFAULT CURRENT_TIMESTAMP,
+        category TEXT
       )
     `);
 
@@ -192,22 +196,26 @@ export class DatabaseService {
       CREATE INDEX IF NOT EXISTS idx_transcripts_episode ON transcripts(episode_id);
       CREATE INDEX IF NOT EXISTS idx_annotations_transcript ON annotations(transcript_id);
     `);
+
+    // Migration: Add category to podcasts table
+    const podcastColumns = this.db.pragma('table_info(podcasts)') as Array<{ name: string }>;
+    const hasCategory = podcastColumns.some((col) => col.name === 'category');
+    if (!hasCategory) {
+      this.db.exec(`ALTER TABLE podcasts ADD COLUMN category TEXT DEFAULT ''`);
+    }
   }
 
   // Podcast methods
   insertPodcast(podcast: Omit<Podcast, 'id' | 'last_updated'>): number {
     const stmt = this.db.prepare(`
-      INSERT INTO podcasts (feed_url, title, description, author, artwork_url)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO podcasts (feed_url, title, description, author, artwork_url, category)
+      VALUES (@feed_url, @title, @description, @author, @artwork_url, @category)
     `);
-    const result = stmt.run(
-      podcast.feed_url,
-      podcast.title,
-      podcast.description,
-      podcast.author,
-      podcast.artwork_url
-    );
-    return result.lastInsertRowid as number;
+    const info = stmt.run({
+      ...podcast,
+      category: podcast.category || ''
+    });
+    return info.lastInsertRowid as number;
   }
 
   getPodcast(id: number): Podcast | undefined {
