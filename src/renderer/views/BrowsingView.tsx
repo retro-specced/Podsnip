@@ -2,6 +2,7 @@ import { useEffect, useState, useRef, useLayoutEffect, useMemo } from 'react';
 import { useAppStore } from '../store/appStore';
 import { Episode } from '../../shared/types';
 import AddPodcastModal from '../components/AddPodcastModal';
+import { Plus, Trash2, RefreshCw, Mic, FileText, Play } from 'lucide-react';
 import '../styles/BrowsingView.css';
 
 // Updated with Add Podcast button - v2
@@ -12,8 +13,6 @@ function BrowsingView() {
     episodes,
     setCurrentPodcast,
     setEpisodes,
-    viewingEpisode,
-    setViewingEpisode,
     setCurrentState,
     setPodcasts,
     setError,
@@ -273,7 +272,7 @@ function BrowsingView() {
               onClick={() => setShowAddModal(true)}
               title="Add podcast"
             >
-              +
+              <Plus size={18} />
             </button>
           </div>
           {podcasts.map((podcast) => (
@@ -285,7 +284,9 @@ function BrowsingView() {
                 {podcast.artwork_url ? (
                   <img src={podcast.artwork_url} alt={podcast.title} className="podcast-artwork" />
                 ) : (
-                  <div className="podcast-artwork-placeholder">🎙️</div>
+                  <div className="podcast-artwork-placeholder">
+                    <Mic size={20} className="opacity-50" />
+                  </div>
                 )}
                 <div className="podcast-info">
                   <h3 className="podcast-title">{podcast.title}</h3>
@@ -298,7 +299,7 @@ function BrowsingView() {
                 onClick={(e) => handleDeletePodcast(podcast.id, e)}
                 title="Delete podcast"
               >
-                🗑️
+                <Trash2 size={14} className="text-red-400" />
               </button>
             </div>
           ))}
@@ -325,7 +326,7 @@ function BrowsingView() {
                     disabled={isRefreshing}
                     title="Refresh episodes"
                   >
-                    🔄
+                    <RefreshCw size={14} />
                   </button>
                 </div>
               </div>
@@ -439,7 +440,7 @@ function BrowsingView() {
                           navigateToView('notes', { podcastId: currentPodcast?.id, episodeId: episode.id });
                         }}
                       >
-                        <span className="notes-icon">📝</span>
+                        <FileText size={12} />
                         <span className="notes-label">Note Available</span>
                       </div>
                     )}
@@ -450,6 +451,7 @@ function BrowsingView() {
           </>
         ) : (
           <div className="empty-state">
+            <Mic size={48} className="empty-icon" />
             <p>Select a podcast to view episodes</p>
           </div>
         )}

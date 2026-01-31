@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAppStore } from '../store/appStore';
 import '../styles/PersistentPlayerBar.css';
+import { Play, Pause, RotateCcw, RotateCw, PenTool, Sparkles } from 'lucide-react';
 
 export default function PersistentPlayerBar() {
     const {
@@ -131,11 +132,15 @@ export default function PersistentPlayerBar() {
                         <span className="speed-label">{playbackSpeed}x</span>
                     </div>
 
-                    <button className="control-btn" onClick={() => handleSkip(-15)}>⏮ 15s</button>
-                    <button className="control-btn play-btn" onClick={handlePlayPause}>
-                        {isPlaying ? '⏸' : '▶️'}
+                    <button className="control-btn" onClick={() => handleSkip(-15)}>
+                        <RotateCcw size={20} />
                     </button>
-                    <button className="control-btn" onClick={() => handleSkip(15)}>15s ⏭</button>
+                    <button className="control-btn play-btn" onClick={handlePlayPause}>
+                        {isPlaying ? <Pause size={28} fill="currentColor" /> : <Play size={28} fill="currentColor" />}
+                    </button>
+                    <button className="control-btn" onClick={() => handleSkip(15)}>
+                        <RotateCw size={20} />
+                    </button>
                 </div>
 
                 <div className="player-bar-progress">
@@ -157,16 +162,16 @@ export default function PersistentPlayerBar() {
                 <div className="dynamic-actions">
                     {hasTranscript ? (
                         <button className="action-btn note-btn" onClick={handleTakeNote}>
-                            ✏️ Take Note
+                            <PenTool size={14} /> Take Note
                         </button>
                     ) : isTranscribingThis ? (
                         <div className="action-status">
                             <div className="spinner-tiny"></div>
-                            <span>Transcribing {transcriptionProgress}%</span>
+                            <span>{transcriptionProgress}%</span>
                         </div>
                     ) : (
                         <button className="action-btn transcribe-btn" onClick={handleTranscribe}>
-                            ✨ Transcribe
+                            <Sparkles size={14} /> Transcribe
                         </button>
                     )}
                 </div>

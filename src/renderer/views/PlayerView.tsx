@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAppStore } from '../store/appStore';
 import { Transcript } from '../../shared/types';
+import { Play, Pause, RotateCcw, RotateCw, PenTool, ArrowDown, Check, Sparkles } from 'lucide-react';
 import '../styles/PlayerView.css';
 
 function PlayerView() {
@@ -258,18 +259,18 @@ function PlayerView() {
           <div className="playback-controls">
             {!isCurrentEpisodePlaying ? (
               <button className="control-button-large play-button" onClick={handleSwitchEpisode}>
-                ▶ Play This Contact
+                <Play size={20} fill="currentColor" /> Play This Episode
               </button>
             ) : (
               <>
                 <button className="control-button" onClick={() => handleSkip(-15)}>
-                  ⏮ 15s
+                  <RotateCcw size={24} />
                 </button>
                 <button className="control-button-large" onClick={handlePlayPause}>
-                  {isPlaying ? '⏸' : '▶️'}
+                  {isPlaying ? <Pause size={32} fill="currentColor" /> : <Play size={32} fill="currentColor" />}
                 </button>
                 <button className="control-button" onClick={() => handleSkip(15)}>
-                  15s ⏭
+                  <RotateCw size={24} />
                 </button>
               </>
             )}
@@ -312,7 +313,7 @@ function PlayerView() {
       <div className="player-right" ref={transcriptContainerRef}>
         {isCurrentEpisodePlaying && !isAutoScrollEnabled && (
           <button className="resume-scroll-button" onClick={handleResumeAutoScroll}>
-            <span>⬇️</span> Enable Auto-Scroll
+            <span><ArrowDown size={14} /></span> Enable Auto-Scroll
           </button>
         )}
 
@@ -352,7 +353,7 @@ function PlayerView() {
                 <div className="selection-toolbar">
                   <span className="selection-count">{selectedSegments.length} selected</span>
                   <button className="clear-selection-button" onClick={clearSelectedSegments}>Clear</button>
-                  <button className="take-note-button" onClick={handleTakeNote}>✏️ Take Note</button>
+                  <button className="take-note-button" onClick={handleTakeNote}><PenTool size={14} /> Take Note</button>
                 </div>
               )}
             </>
@@ -366,7 +367,7 @@ function PlayerView() {
       </div>
       {showSaveToast && (
         <div className="save-toast">
-          <div className="save-toast-icon">✓</div>
+          <div className="save-toast-icon"><Check size={18} /></div>
           <div className="save-toast-text">Note saved!</div>
         </div>
       )}

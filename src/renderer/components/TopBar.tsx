@@ -1,21 +1,9 @@
 import { useAppStore } from '../store/appStore';
 import '../styles/TopBar.css';
 import TranscriptionStatusBubble from './TranscriptionStatusBubble';
+import { ChevronLeft, ChevronRight, Library, NotebookPen, Settings } from 'lucide-react';
 
 function TopBar() {
-    // ... (imports/exports usually handled by context, but replace_file_content handles snippets)
-    // Wait, I need to add the import at the top too.
-    // I'll do a MultiReplace? Or two replaces?
-    // Or just replace the whole file content if small? 
-    // It's small. I'll use replace_file_content with enough context.
-    // Actually, insert import at top first?
-    // Let's do it in one go if I can match the structure.
-    // TopBar is 70 lines.
-    // I will just add the component in the return.
-
-    // The import needs to be added. 
-    // I'll replace the StartLine 1.
-
     const {
         currentState,
         navigateToView,
@@ -37,7 +25,7 @@ function TopBar() {
                         disabled={!canGoBack()}
                         title="Go Back"
                     >
-                        &#60; {/* < symbol */}
+                        <ChevronLeft size={20} />
                     </button>
                     <button
                         className="nav-control-btn"
@@ -45,7 +33,7 @@ function TopBar() {
                         disabled={!canGoForward()}
                         title="Go Forward"
                     >
-                        &#62; {/* > symbol */}
+                        <ChevronRight size={20} />
                     </button>
                 </div>
 
@@ -54,14 +42,14 @@ function TopBar() {
                         className={`nav-link ${isLibraryActive ? 'active' : ''}`}
                         onClick={() => navigateToView('browsing')}
                     >
-                        <span className="nav-icon">📚</span>
+                        <span className="nav-icon"><Library size={16} /></span>
                         Library
                     </button>
                     <button
                         className={`nav-link ${currentState === 'notes' ? 'active' : ''}`}
                         onClick={() => navigateToView('notes', { episodeId: null })}
                     >
-                        <span className="nav-icon">📝</span>
+                        <span className="nav-icon"><NotebookPen size={16} /></span>
                         Notes
                     </button>
                 </div>
@@ -74,7 +62,7 @@ function TopBar() {
                     onClick={() => navigateToView('settings')}
                     title="Settings"
                 >
-                    ⚙️
+                    <Settings size={18} />
                 </button>
             </div>
         </header>
