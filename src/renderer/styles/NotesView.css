@@ -460,3 +460,88 @@
   color: white;
   border-color: var(--primary-color);
 }
+
+/* Split Layout for Podcast Details */
+.episode-notes-group-split {
+  display: flex;
+  gap: var(--spacing-xl);
+  margin-bottom: var(--spacing-2xl);
+  padding-bottom: var(--spacing-xl);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.episode-notes-group-split:last-child {
+  border-bottom: none;
+}
+
+.episode-info-sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  position: sticky;
+  top: var(--spacing-md);
+  height: fit-content;
+}
+
+.episode-sidebar-artwork-container {
+  width: 100%;
+  aspect-ratio: 1/1;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  margin-bottom: var(--spacing-md);
+  background: var(--surface);
+}
+
+.episode-sidebar-artwork {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.episode-sidebar-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48px;
+  background: var(--surface);
+}
+
+.episode-sidebar-title {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-xs);
+  line-height: 1.3;
+}
+
+.episode-sidebar-meta {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.episode-notes-masonry {
+  flex: 1;
+  column-count: 2;
+  column-gap: var(--spacing-lg);
+}
+
+@media (max-width: 1100px) {
+  .episode-notes-masonry {
+    column-count: 1;
+  }
+}
+
+.episode-notes-masonry .note-card {
+  break-inside: avoid;
+  margin-bottom: var(--spacing-lg);
+}
+
+/* Compact Note Header */
+.note-header-compact {
+  display: flex;
+  align-items: center;
+  margin-bottom: var(--spacing-xs);
+}

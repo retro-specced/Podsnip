@@ -208,21 +208,29 @@ function NotesView() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const renderNoteCard = (annotation: EnrichedAnnotation) => (
+  const renderNoteCard = (annotation: EnrichedAnnotation, compact: boolean = false) => (
     <div key={annotation.id} className="note-card">
-      <div className="note-episode-info">
-        {annotation.episode_artwork && (
-          <img
-            src={annotation.episode_artwork}
-            alt={annotation.episode_title}
-            className="note-episode-artwork"
-          />
-        )}
-        <div className="note-episode-details">
-          <h4 className="note-episode-title">{annotation.episode_title}</h4>
-          <div className="note-timestamp">{formatTime(annotation.start_time)}</div>
+      {!compact ? (
+        <div className="note-episode-info">
+          {annotation.episode_artwork && (
+            <img
+              src={annotation.episode_artwork}
+              alt={annotation.episode_title}
+              className="note-episode-artwork"
+            />
+          )}
+          <div className="note-episode-details">
+            <h4 className="note-episode-title">{annotation.episode_title}</h4>
+            <div className="note-timestamp">{formatTime(annotation.start_time)}</div>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="note-header-compact" style={{ marginBottom: '8px' }}>
+          <div className="note-timestamp" style={{ fontSize: '0.85em', color: 'var(--text-secondary)' }}>
+            {formatTime(annotation.start_time)}
+          </div>
+        </div>
+      )}
 
       <div className="note-transcript">
         <div className="note-transcript-label">Transcript:</div>
@@ -272,7 +280,7 @@ function NotesView() {
   // Render Masonry Grid (All Notes)
   const renderMasonryGrid = () => (
     <div className="notes-masonry-grid">
-      {filteredAnnotations.map(renderNoteCard)}
+      {filteredAnnotations.map((a) => renderNoteCard(a))}
     </div>
   );
 
@@ -351,10 +359,29 @@ function NotesView() {
           {sortedEpisodeIds.map((epId) => {
             const epGroup = episodeGroups[Number(epId)];
             return (
-              <div key={epId} className="episode-notes-group">
-                <h3 className="episode-group-title">{epGroup.title}</h3>
-                <div className="notes-list">
-                  {epGroup.annotations.map(renderNoteCard)}
+              <div key={epId} className="episode-notes-group-split">
+                <div className="episode-info-sidebar">
+                  <div className="episode-sidebar-artwork-container">
+                    {epGroup.annotations[0].episode_artwork ? (
+                      <img
+                        src={epGroup.annotations[0].episode_artwork}
+                        alt={epGroup.title}
+                        className="episode-sidebar-artwork"
+                      />
+                    ) : (
+                      <div className="episode-sidebar-placeholder">🎙️</div>
+                    )}
+                  </div>
+                  <div className="episode-sidebar-details">
+                    <h3 className="episode-sidebar-title">{epGroup.title}</h3>
+                    <div className="episode-sidebar-meta">
+                      {epGroup.annotations.length} Note{epGroup.annotations.length !== 1 ? 's' : ''}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="episode-notes-masonry">
+                  {epGroup.annotations.map((a) => renderNoteCard(a, true))}
                 </div>
               </div>
             );
