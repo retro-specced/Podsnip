@@ -25,6 +25,7 @@ function PlayerView() {
     clearSelectedSegments,
     setSelectedSegments,
     setCurrentState,
+    setCurrentEpisode,
     setError,
     showSaveToast,
     setShowSaveToast,
@@ -32,6 +33,7 @@ function PlayerView() {
 
   const audioRef = useRef<HTMLAudioElement>(null);
   const transcriptContainerRef = useRef<HTMLDivElement>(null);
+  const scrollableContainerRef = useRef<HTMLDivElement>(null);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [transcriptionProgress, setTranscriptionProgress] = useState(0);
   const [transcriptionStage, setTranscriptionStage] = useState('');
@@ -43,6 +45,8 @@ function PlayerView() {
   const pendingSeekTimeRef = useRef<number | null>(null);
   const hasJumpedRef = useRef(false);
   const lastClickedIndexRef = useRef<number | null>(null);
+  const [isAutoScrollPaused, setIsAutoScrollPaused] = useState(false);
+  const isProgrammaticScrollRef = useRef(false);
 
   useEffect(() => {
     if (currentEpisode) {
@@ -138,13 +142,57 @@ function PlayerView() {
     };
   }, [currentEpisode]);
 
+  // Handle user scroll - pause auto-scroll until user clicks resume
   useEffect(() => {
-    // Auto-scroll to active segment
+    const container = scrollableContainerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      // Ignore programmatic scrolls (from auto-scroll)
+      if (isProgrammaticScrollRef.current) return;
+
+      // Pause auto-scroll when user manually scrolls
+      if (!isAutoScrollPaused) {
+        setIsAutoScrollPaused(true);
+      }
+    };
+
+    container.addEventListener('scroll', handleScroll);
+    return () => {
+      container.removeEventListener('scroll', handleScroll);
+    };
+  }, [isAutoScrollPaused]);
+
+  // Resume auto-scroll handler
+  const handleResumeAutoScroll = () => {
+    setIsAutoScrollPaused(false);
+    // Immediately scroll to active segment (mark as programmatic)
+    isProgrammaticScrollRef.current = true;
     const activeElement = document.querySelector('.transcript-segment.active');
-    if (activeElement && transcriptContainerRef.current) {
+    if (activeElement) {
       activeElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
-  }, [activeSegmentIndex]);
+    // Reset flag after scroll animation completes
+    setTimeout(() => {
+      isProgrammaticScrollRef.current = false;
+    }, 500);
+  };
+
+  useEffect(() => {
+    // Auto-scroll to active segment (only if not paused)
+    if (isAutoScrollPaused) return;
+
+    const activeElement = document.querySelector('.transcript-segment.active');
+    if (activeElement && scrollableContainerRef.current) {
+      // Mark as programmatic scroll to avoid triggering pause
+      isProgrammaticScrollRef.current = true;
+      activeElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Reset flag after scroll animation completes
+      setTimeout(() => {
+        isProgrammaticScrollRef.current = false;
+      }, 500);
+    }
+  }, [activeSegmentIndex, isAutoScrollPaused]);
 
   const loadTranscript = async () => {
     if (!currentEpisode) return;
@@ -175,6 +223,12 @@ function PlayerView() {
       // Reload transcript after creation
       const newTranscript = await window.api.transcription.get(currentEpisode.id);
       setTranscripts(newTranscript);
+
+      // Refresh episode to get updated local_path for playback sync
+      const updatedEpisode = await window.api.episode.get(currentEpisode.id);
+      if (updatedEpisode) {
+        setCurrentEpisode(updatedEpisode);
+      }
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to transcribe episode');
     } finally {
@@ -255,6 +309,9 @@ function PlayerView() {
   };
 
   const handleSegmentClick = (segment: Transcript, index: number, event: React.MouseEvent) => {
+    // Pause auto-scroll when user clicks on a segment
+    setIsAutoScrollPaused(true);
+
     // Shift+click for range selection
     if (event.shiftKey && lastClickedIndexRef.current !== null) {
       const start = Math.min(lastClickedIndexRef.current, index);
@@ -331,7 +388,7 @@ function PlayerView() {
 
           <audio
             ref={audioRef}
-            src={currentEpisode.audio_url}
+            src={currentEpisode.local_path || currentEpisode.audio_url}
             onTimeUpdate={handleTimeUpdate}
             onEnded={() => {
               setIsPlaying(false);
@@ -440,7 +497,7 @@ function PlayerView() {
           {isTranscribing && <span className="transcribing-badge">Transcribing...</span>}
         </div>
 
-        <div className="transcript-container">
+        <div className="transcript-container" ref={scrollableContainerRef}>
           {isTranscribing ? (
             <div className="transcript-loading">
               <div className="spinner"></div>
@@ -483,6 +540,11 @@ function PlayerView() {
                     ✏️ Take Note
                   </button>
                 </div>
+              )}
+              {isAutoScrollPaused && selectedSegments.length === 0 && (
+                <button className="resume-scroll-button" onClick={handleResumeAutoScroll}>
+                  ↓ Resume Auto-Scroll
+                </button>
               )}
             </>
           ) : (

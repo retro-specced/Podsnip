@@ -250,6 +250,14 @@ export class DatabaseService {
     return stmt.all(podcastId) as Episode[];
   }
 
+  updateEpisodeLocalPath(episodeId: number, localPath: string): void {
+    const stmt = this.db.prepare(`
+      UPDATE episodes SET local_path = ?, download_status = 'downloaded'
+      WHERE id = ?
+    `);
+    stmt.run(localPath, episodeId);
+  }
+
   // Transcript methods
   insertTranscript(transcript: Omit<Transcript, 'id'>): number {
     const stmt = this.db.prepare(`

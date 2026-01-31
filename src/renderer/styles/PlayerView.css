@@ -502,3 +502,39 @@
   font-weight: 600;
   color: white;
 }
+
+/* Resume Auto-Scroll Button */
+.resume-scroll-button {
+  position: fixed;
+  bottom: 24px;
+  right: 40px;
+  padding: var(--spacing-sm) var(--spacing-lg);
+  background: linear-gradient(135deg, var(--primary-color), #00d4ff);
+  color: white;
+  border: none;
+  border-radius: var(--radius-lg);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(138, 180, 248, 0.4);
+  z-index: 100;
+  animation: slideUpFade 0.3s ease-out;
+  transition: var(--transition);
+}
+
+.resume-scroll-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(138, 180, 248, 0.5);
+}
+
+@keyframes slideUpFade {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}

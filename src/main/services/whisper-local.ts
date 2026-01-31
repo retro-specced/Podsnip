@@ -69,14 +69,15 @@ Model sizes:
     episodeId: number,
     audioUrl: string,
     db: DatabaseService,
+    audioDir: string,
     onProgress?: (progress: number, stage: string) => void
   ): Promise<void> {
     if (!this.isAvailable()) {
       throw new Error('Whisper.cpp not installed. ' + this.getInstallInstructions());
     }
 
-    let tempAudioPath: string | null = null;
     let tempWavPath: string | null = null;
+    let permanentAudioPath: string | null = null;
 
     try {
       // Check if transcript already exists
@@ -87,6 +88,35 @@ Model sizes:
         return;
       }
 
+      // Check if we already have a local copy of the audio
+      const episode = db.getEpisode(episodeId);
+      if (episode?.local_path && fs.existsSync(episode.local_path)) {
+        console.log('Using existing local audio file:', episode.local_path);
+        permanentAudioPath = episode.local_path;
+      } else {
+        // Download audio file to permanent location
+        if (onProgress) onProgress(5, 'Downloading audio');
+        console.log('Downloading audio file...');
+
+        // Ensure audio directory exists
+        if (!fs.existsSync(audioDir)) {
+          fs.mkdirSync(audioDir, { recursive: true });
+        }
+
+        const audioResponse = await axios.get(audioUrl, {
+          responseType: 'arraybuffer',
+          timeout: 300000,
+        });
+
+        // Save to permanent location (so playback uses same file as transcript)
+        permanentAudioPath = path.join(audioDir, `episode-${episodeId}.mp3`);
+        fs.writeFileSync(permanentAudioPath, Buffer.from(audioResponse.data));
+
+        // Update database with local path
+        db.updateEpisodeLocalPath(episodeId, permanentAudioPath);
+        console.log('Audio saved to:', permanentAudioPath);
+      }
+
       // Find model
       const modelPath = this.findModel();
       if (!modelPath) {
@@ -95,21 +125,10 @@ Model sizes:
 
       console.log(`Using model: ${modelPath}`);
 
-      // Download audio file
-      if (onProgress) onProgress(5, 'Downloading audio');
-      console.log('Downloading audio file...');
-      const audioResponse = await axios.get(audioUrl, {
-        responseType: 'arraybuffer',
-        timeout: 300000,
-      });
-
-      tempAudioPath = path.join(os.tmpdir(), `podsnip-${episodeId}-${Date.now()}.mp3`);
-      fs.writeFileSync(tempAudioPath, Buffer.from(audioResponse.data));
-
       // Convert to WAV format (required by whisper.cpp)
       if (onProgress) onProgress(15, 'Converting audio format');
       console.log('Converting audio to WAV format...');
-      tempWavPath = await this.convertToWav(tempAudioPath);
+      tempWavPath = await this.convertToWav(permanentAudioPath);
 
       // Get audio duration for accurate progress tracking
       let audioDuration = 0;
@@ -133,15 +152,13 @@ Model sizes:
       if (onProgress) onProgress(95, 'Saving transcript');
       this.parseAndStore(transcript, episodeId, db);
 
-      // Cleanup
-      if (tempAudioPath && fs.existsSync(tempAudioPath)) fs.unlinkSync(tempAudioPath);
+      // Cleanup WAV file only (keep permanent audio)
       if (tempWavPath && fs.existsSync(tempWavPath)) fs.unlinkSync(tempWavPath);
 
       if (onProgress) onProgress(100, 'Complete');
       console.log(`Local transcription complete for episode ${episodeId}`);
     } catch (error: any) {
-      // Cleanup on error
-      if (tempAudioPath && fs.existsSync(tempAudioPath)) fs.unlinkSync(tempAudioPath);
+      // Cleanup temp WAV file on error (keep permanent audio if it was downloaded)
       if (tempWavPath && fs.existsSync(tempWavPath)) fs.unlinkSync(tempWavPath);
 
       console.error('Local transcription error:', error);

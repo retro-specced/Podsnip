@@ -100,11 +100,15 @@ ipcMain.handle('transcription:get', async (_, episodeId: number) => {
 });
 
 ipcMain.handle('transcription:create', async (event, episodeId: number, audioUrl: string) => {
+  // Create audio directory in userData
+  const audioDir = path.join(app.getPath('userData'), 'audio');
+
   // Always use local whisper.cpp with progress tracking
   return await localWhisperService.transcribeEpisode(
     episodeId,
     audioUrl,
     db,
+    audioDir,
     (progress, stage) => {
       // Send progress update to renderer
       event.sender.send('transcription:progress', { episodeId, progress, stage });
