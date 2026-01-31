@@ -161,6 +161,11 @@ export class DatabaseService {
       `);
     }
 
+    const hasTags = annotationColumns.some((col) => col.name === 'tags');
+    if (!hasTags) {
+      this.db.exec(`ALTER TABLE annotations ADD COLUMN tags TEXT`);
+    }
+
     // Playback state table
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS playback_state (

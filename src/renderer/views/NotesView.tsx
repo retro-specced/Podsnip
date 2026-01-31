@@ -71,7 +71,8 @@ function NotesView() {
     if (searchQuery) {
       filtered = filtered.filter((annotation) =>
         annotation.note_text.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        annotation.transcript_text.toLowerCase().includes(searchQuery.toLowerCase())
+        annotation.transcript_text.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (annotation.tags && annotation.tags.toLowerCase().includes(searchQuery.toLowerCase()))
       );
     }
 
@@ -202,9 +203,9 @@ function NotesView() {
           <div className="note-date">{formatDate(annotation.created_at)}</div>
           {annotation.tags && (
             <div className="note-tags">
-              {annotation.tags.split(',').map((tag, index) => (
+              {annotation.tags.split(',').filter(t => t.trim()).map((tag, index) => (
                 <span key={index} className="note-tag">
-                  {tag}
+                  #{tag.trim()}
                 </span>
               ))}
             </div>
