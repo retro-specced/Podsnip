@@ -30,7 +30,8 @@ function PlayerView() {
     isAutoScrollEnabled,
     setIsAutoScrollEnabled,
     setTranscribingEpisode,
-    transcribingEpisode // Added to check for active transcription
+    transcribingEpisode, // Added to check for active transcription
+    navigateToView // Added for navigation
   } = useAppStore();
 
   const transcriptContainerRef = useRef<HTMLDivElement>(null);
@@ -55,7 +56,7 @@ function PlayerView() {
 
   const handleTakeNote = () => {
     if (selectedSegments.length === 0) return;
-    setCurrentState('annotation');
+    navigateToView('annotation');
   };
 
   const handleSegmentClick = (segment: Transcript, index: number, event: React.MouseEvent) => {

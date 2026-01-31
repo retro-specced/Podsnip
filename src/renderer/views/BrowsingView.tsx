@@ -152,8 +152,9 @@ function BrowsingView() {
       });
     }
     // Only set VIEWING episode, do not auto-play
-    setViewingEpisode(episode);
-    setCurrentState('player');
+    // setViewingEpisode(episode); // Handled by navigateToView
+    // setCurrentState('player');
+    navigateToView('player', { episodeId: episode.id });
   };
 
   const handleRefreshPodcast = async () => {

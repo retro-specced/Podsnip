@@ -28,7 +28,8 @@ export default function PersistentPlayerBar() {
         setTranscriptionProgress,
         transcriptionProgress, // Added
         setTranscriptionStage,
-        setError
+        setError,
+        navigateToView // Added for navigation
     } = useAppStore();
 
     // Local state to track if we have a transcript for the PLAYING episode
@@ -77,12 +78,11 @@ export default function PersistentPlayerBar() {
 
     const handleTakeNote = () => {
         setIsAutoScrollEnabled(false);
-        setViewingEpisode(playingEpisode); // Navigate to it
-        setCurrentState('player');
+        // Correctly use navigateToView
+        navigateToView('player', { episodeId: playingEpisode.id });
     };
 
     // Transcription Logic
-
 
     const isTranscribingThis = isTranscribing && transcribingEpisode?.id === playingEpisode.id;
 
@@ -95,34 +95,12 @@ export default function PersistentPlayerBar() {
 
         try {
             await window.api.transcription.create(playingEpisode.id, playingEpisode.audio_url);
-            // Re-check triggered by useEffect dependency
         } catch (e: any) {
             console.error(e);
             setError(e.message);
             setIsTranscribing(false);
             setTranscribingEpisode(null);
         }
-        // Success case: listener will update progress, eventually finish. 
-        // We rely on socket/ipc messages usually? 
-        // Wait, window.api.transcription.create is awaited. 
-        // If it's awaited until completion, then we finish here.
-        // If it returns immediately and background process runs, we need listener.
-        // Assuming current implementation (based on PlayerView) relies on `onProgress`.
-        // The `finally` block in PlayerView seemed to set IsTranscribing false immediately?
-        // Let's check PlayerView implementation behavior again if needed.
-        // For now, assuming standard flow.
-
-        // Actually, if we look at previous PlayerView code:
-        // await window.api.transcription.create(...)
-        // finally { setIsTranscribing(false) }
-        // This implies `create` blocks until done? Or it fails?
-        // If it blocks until done, we are good.
-        // If it returns early, we need to NOT set isTranscribing false until done.
-        // But the previous code had `setIsTranscribing(false)` in finally.
-        // I will mirror that logic, but if `create` is long-running, UI blocks?
-        // Let's assume `create` handles it or we rely on the store updates from listeners if any.
-        // Actually, let's keep the `finally` block logic consistent with `PlayerView`.
-
         setIsTranscribing(false);
         setTranscribingEpisode(null);
     };
@@ -138,7 +116,6 @@ export default function PersistentPlayerBar() {
                 />
                 <div className="player-bar-info">
                     <div className="player-bar-title" title={playingEpisode.title}>{playingEpisode.title}</div>
-                    {/* We don't easily have separate podcast title unless we fetch it, skipping for now or use simplified */}
                 </div>
             </div>
 

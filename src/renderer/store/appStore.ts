@@ -7,6 +7,9 @@ interface HistorySnapshot {
   episode: Episode | null; // This represents the VIEWING episode
   scrollPosition?: number;
   visibleCount?: number;
+  // Notes View State
+  notesViewMode?: 'masonry' | 'podcasts';
+  notesSelectedPodcastId?: number | null;
 }
 
 interface AppStore {
@@ -102,6 +105,12 @@ interface AppStore {
   // Toast
   showSaveToast: boolean;
   setShowSaveToast: (show: boolean) => void;
+
+  // Notes View State
+  notesViewMode: 'masonry' | 'podcasts';
+  notesSelectedPodcastId: number | null;
+  setNotesViewMode: (mode: 'masonry' | 'podcasts') => void;
+  setNotesSelectedPodcastId: (id: number | null) => void;
 }
 
 export const useAppStore = create<AppStore>((set, get) => ({
@@ -128,8 +137,14 @@ export const useAppStore = create<AppStore>((set, get) => ({
   isLoading: false,
   error: null,
   isAutoScrollEnabled: true,
+  isTranscribing: false,
+  transcriptionProgress: 0,
+  transcriptionStage: '',
   selectedSegments: [],
   showSaveToast: false,
+
+  notesViewMode: 'masonry',
+  notesSelectedPodcastId: null,
 
   // Actions
   setIsAutoScrollEnabled: (enabled) => set({ isAutoScrollEnabled: enabled }),
@@ -143,7 +158,16 @@ export const useAppStore = create<AppStore>((set, get) => ({
   setRestoredScrollPosition: (pos) => set({ restoredScrollPosition: pos }),
   setRestoredVisibleCount: (count) => set({ restoredVisibleCount: count }),
 
-  navigateToView: (view, context = {}) => set((state) => {
+  setNotesViewMode: (mode) => set({ notesViewMode: mode }),
+  setNotesSelectedPodcastId: (id) => set({ notesSelectedPodcastId: id }),
+
+  navigateToView: (view, context: { podcastId?: number | null, episodeId?: number | null, replace?: boolean, notesViewMode?: 'masonry' | 'podcasts', notesSelectedPodcastId?: number | null } = {}) => set((state) => {
+    // 1. Transient View: Annotation
+    // If navigating TO annotation, just switch state. Do NOT touch history.
+    if (view === 'annotation') {
+      return { currentState: 'annotation' };
+    }
+
     const newSnapshot: HistorySnapshot = {
       view,
       podcast: context.podcastId !== undefined
@@ -151,7 +175,14 @@ export const useAppStore = create<AppStore>((set, get) => ({
         : state.currentPodcast,
       episode: context.episodeId !== undefined
         ? (state.episodes.find(e => e.id === context.episodeId) || null)
-        : state.viewingEpisode // Default to current viewing episode
+        : state.viewingEpisode, // Default to current viewing episode
+
+      // Capture current Notes state if we are navigating FROM notes (or just snapshotting generically?)
+      // Actually, we should snapshot the DESTINATION state if we are pushing?
+      // No, the snapshot represents the state related to that history entry.
+      // If we are navigating TO 'notes', we use context or defaults.
+      notesViewMode: view === 'notes' ? (context.notesViewMode || 'masonry') : undefined,
+      notesSelectedPodcastId: view === 'notes' ? (context.notesSelectedPodcastId || null) : undefined
     };
 
     let newHistory = [...state.history];
@@ -162,7 +193,9 @@ export const useAppStore = create<AppStore>((set, get) => ({
         currentState: view,
         history: newHistory,
         currentPodcast: newSnapshot.podcast,
-        viewingEpisode: newSnapshot.episode
+        viewingEpisode: newSnapshot.episode,
+        notesViewMode: newSnapshot.notesViewMode || 'masonry',
+        notesSelectedPodcastId: newSnapshot.notesSelectedPodcastId || null
       };
     }
 
@@ -176,13 +209,37 @@ export const useAppStore = create<AppStore>((set, get) => ({
       historyIndex: newHistory.length - 1,
       currentPodcast: newSnapshot.podcast,
       viewingEpisode: newSnapshot.episode,
+      notesViewMode: newSnapshot.notesViewMode || 'masonry',
+      notesSelectedPodcastId: newSnapshot.notesSelectedPodcastId || null
     };
   }),
 
   navigateBack: () => set((state) => {
+    // 1. Transient View: Annotation
+    // If currently in annotation, just "close" it by restoring the current snapshot view.
+    if (state.currentState === 'annotation') {
+      const currentSnapshot = state.history[state.historyIndex];
+      return {
+        currentState: currentSnapshot.view
+      };
+    }
+
+    // 2. Standard Back with Onboarding Bypass
     if (state.historyIndex > 0) {
-      const newIndex = state.historyIndex - 1;
-      const snapshot = state.history[newIndex];
+      let newIndex = state.historyIndex - 1;
+      let snapshot = state.history[newIndex];
+
+      // Bypass Onboarding: If target is onboarding, try to go back one more
+      if (snapshot.view === 'onboarding' && newIndex > 0) {
+        newIndex--;
+        snapshot = state.history[newIndex];
+      }
+      // If we are stuck at onboarding (newIndex === 0) AND it is onboarding,
+      // and we don't want to be there?
+      // Well, if the app started there, we can't really go back further.
+      // But typically, we replace onboarding history when entering browsing.
+      // So this check is just a safety net.
+
       return {
         historyIndex: newIndex,
         currentState: snapshot.view,
@@ -191,12 +248,21 @@ export const useAppStore = create<AppStore>((set, get) => ({
         // playingEpisode remains untouched!
         restoredScrollPosition: snapshot.scrollPosition || 0,
         restoredVisibleCount: snapshot.visibleCount || 20,
+        notesViewMode: snapshot.notesViewMode || 'masonry',
+        notesSelectedPodcastId: snapshot.notesSelectedPodcastId || null
       };
     }
     return {};
   }),
 
   navigateForward: () => set((state) => {
+    // If we are in annotation view, 'Forward' shouldn't fundamentally allow leaving it 
+    // to go to the "next" history state unless we treat annotation as part of the previous state.
+    // Actually, if we are in annotation, we are "on top" of the current history index.
+    // So forward logic should probably just behave normally (and thus exit annotation)?
+    // Or should it be disabled?
+    // Let's assume standard behavior: move index forward + restore state.
+
     if (state.historyIndex < state.history.length - 1) {
       const newIndex = state.historyIndex + 1;
       const snapshot = state.history[newIndex];
@@ -208,6 +274,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
         // playingEpisode remains untouched!
         restoredScrollPosition: snapshot.scrollPosition || 0,
         restoredVisibleCount: snapshot.visibleCount || 20,
+        notesViewMode: snapshot.notesViewMode || 'masonry',
+        notesSelectedPodcastId: snapshot.notesSelectedPodcastId || null
       };
     }
     return {};

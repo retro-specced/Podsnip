@@ -35,28 +35,46 @@ function NotesView() {
     setCurrentPodcast,
     setEpisodes,
     navigateToView,
+    notesViewMode,
+    notesSelectedPodcastId,
+    restoredScrollPosition,
+    // We don't need setters, we navigate
+    updateCurrentSnapshot
   } = useAppStore();
+
   const [filteredAnnotations, setFilteredAnnotations] = useState<EnrichedAnnotation[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest'>('newest');
   const [timeRange, setTimeRange] = useState<'all' | 'today' | 'week' | 'month' | 'year'>('all');
-
-
-  // Initialize view mode and selected podcast
-  // Default to 'masonry' (All Notes) unless specifically deep-linking to an episode
-  const [selectedPodcastId, setSelectedPodcastId] = useState<number | null>(viewingEpisode ? viewingEpisode.podcast_id : null);
-  const [viewMode, setViewMode] = useState<'masonry' | 'podcasts'>(viewingEpisode ? 'podcasts' : 'masonry');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
-  // Ref for scrolling to deep-linked episode
+  // Refs
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const episodeRefs = useRef<Record<number, HTMLDivElement | null>>({});
 
-  // Sync viewMode if podcast is selected via other means, but mainly controlled by user
+  // 1. Scroll Restoration
   useEffect(() => {
-    if (selectedPodcastId) {
-      setViewMode('podcasts');
+    if (scrollContainerRef.current && restoredScrollPosition !== null) {
+      scrollContainerRef.current.scrollTop = restoredScrollPosition;
     }
-  }, [selectedPodcastId]);
+  }, [restoredScrollPosition]); // On mount/update
+
+  // 2. Navigation Helper
+  const handleInternalNavigate = (mode: 'masonry' | 'podcasts', podcastId: number | null = null) => {
+    // Capture curent scroll
+    if (scrollContainerRef.current) {
+      updateCurrentSnapshot({ scrollPosition: scrollContainerRef.current.scrollTop });
+    }
+
+    // Navigate (Push to history)
+    navigateToView('notes', {
+      notesViewMode: mode,
+      notesSelectedPodcastId: podcastId
+    });
+  };
+
+  const selectedPodcastId = notesSelectedPodcastId;
+  const viewMode = notesViewMode;
 
   // Scroll to deep-linked episode if present
   useEffect(() => {
@@ -66,11 +84,10 @@ function NotesView() {
         const element = episodeRefs.current[viewingEpisode.id];
         if (element) {
           element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          // Highlight effect?
         }
       }, 100);
     }
-  }, [selectedPodcastId, viewingEpisode?.id, viewMode, filteredAnnotations]); // Depend on filteredAnnotations to ensure content is loaded
+  }, [selectedPodcastId, viewingEpisode?.id, viewMode, filteredAnnotations]);
 
   useEffect(() => {
     loadAnnotations();
@@ -231,6 +248,11 @@ function NotesView() {
       // Set the jump time
       setJumpToTime(annotation.start_time);
 
+      // Capture scroll before navigating away
+      if (scrollContainerRef.current) {
+        updateCurrentSnapshot({ scrollPosition: scrollContainerRef.current.scrollTop });
+      }
+
       // Navigate to player view using unified navigation
       navigateToView('player', { episodeId: episode.id, podcastId: podcast.id });
     } catch (error) {
@@ -336,7 +358,7 @@ function NotesView() {
         <div
           key={group.podcastId}
           className="podcast-notes-card"
-          onClick={() => setSelectedPodcastId(group.podcastId)}
+          onClick={() => handleInternalNavigate('podcasts', group.podcastId)}
         >
           {group.artworkUrl ? (
             <div className="podcast-notes-artwork-container">
@@ -393,7 +415,7 @@ function NotesView() {
         <div className="notes-header-row">
           <button
             className="back-to-podcasts-button"
-            onClick={() => setSelectedPodcastId(null)}
+            onClick={() => handleInternalNavigate('podcasts', null)}
           >
             ← Back to Library
           </button>
@@ -452,16 +474,13 @@ function NotesView() {
             <div className="notes-view-toggle">
               <button
                 className={`toggle-option ${viewMode === 'masonry' ? 'active' : ''}`}
-                onClick={() => {
-                  setViewMode('masonry');
-                  setSelectedPodcastId(null);
-                }}
+                onClick={() => handleInternalNavigate('masonry')}
               >
                 All Notes
               </button>
               <button
                 className={`toggle-option ${viewMode === 'podcasts' ? 'active' : ''}`}
-                onClick={() => setViewMode('podcasts')}
+                onClick={() => handleInternalNavigate('podcasts')}
               >
                 Podcasts
               </button>
@@ -526,7 +545,7 @@ function NotesView() {
         )}
       </div>
 
-      <div className="notes-content-area">
+      <div className="notes-content-area" ref={scrollContainerRef}>
         {filteredAnnotations.length > 0 ? (
           viewMode === 'masonry' ? (
             renderMasonryGrid()
