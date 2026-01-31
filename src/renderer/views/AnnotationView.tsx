@@ -78,46 +78,48 @@ function AnnotationView() {
           </button>
         </div>
 
-        <div className="selected-segment">
-          <div className="segment-timestamp">
-            {formatTime(startTime)} - {formatTime(endTime)}
-            {selectedSegments.length > 1 && (
-              <span className="segment-count"> ({selectedSegments.length} segments)</span>
-            )}
+        <div className="annotation-body">
+          <div className="selected-segment">
+            <div className="segment-timestamp">
+              {formatTime(startTime)} - {formatTime(endTime)}
+              {selectedSegments.length > 1 && (
+                <span className="segment-count"> ({selectedSegments.length} segments)</span>
+              )}
+            </div>
+            <div className="segment-text-display">{combinedText}</div>
           </div>
-          <div className="segment-text-display">{combinedText}</div>
-        </div>
 
-        <div className="annotation-form">
-          <label htmlFor="note-text">Your Note</label>
-          <textarea
-            id="note-text"
-            value={noteText}
-            onChange={(e) => setNoteText(e.target.value)}
-            placeholder="Write your thoughts, insights, or reflections..."
-            className="note-textarea"
-            rows={8}
-            autoFocus
-          />
-          <div className="character-count">{noteText.length} characters</div>
+          <div className="annotation-form">
+            <label htmlFor="note-text">Your Note</label>
+            <textarea
+              id="note-text"
+              value={noteText}
+              onChange={(e) => setNoteText(e.target.value)}
+              placeholder="Write your thoughts..."
+              className="note-textarea"
+              rows={5}
+              autoFocus
+            />
+            {/* Character count reduced/hidden to save space or made smaller? Keeping it for now. */}
 
-          <label htmlFor="tags">Tags (optional)</label>
-          <input
-            id="tags"
-            type="text"
-            value={tags}
-            onChange={(e) => setTags(e.target.value)}
-            placeholder="idea, important, research (comma-separated)"
-            className="tags-input"
-          />
+            <label htmlFor="tags" style={{ marginTop: '12px' }}>Tags</label>
+            <input
+              id="tags"
+              type="text"
+              value={tags}
+              onChange={(e) => setTags(e.target.value)}
+              placeholder="idea, important..."
+              className="tags-input"
+            />
 
-          <div className="annotation-actions">
-            <button className="cancel-button" onClick={handleCancel} disabled={isSaving}>
-              Cancel
-            </button>
-            <button className="save-button" onClick={handleSave} disabled={isSaving}>
-              {isSaving ? 'Saving...' : 'Save Note'}
-            </button>
+            <div className="annotation-actions">
+              <button className="cancel-button" onClick={handleCancel} disabled={isSaving}>
+                Cancel
+              </button>
+              <button className="save-button" onClick={handleSave} disabled={isSaving}>
+                {isSaving ? 'Saving...' : 'Save'}
+              </button>
+            </div>
           </div>
         </div>
       </div>

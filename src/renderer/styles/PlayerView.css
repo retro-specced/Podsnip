@@ -282,30 +282,6 @@
   overflow: hidden;
 }
 
-.transcript-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--spacing-lg);
-  background: var(--surface);
-  border-bottom: 1px solid var(--border-color);
-}
-
-.transcript-header h3 {
-  font-size: var(--font-size-lg);
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.transcribing-badge {
-  padding: var(--spacing-xs) var(--spacing-md);
-  background: var(--primary-color);
-  color: white;
-  border-radius: 999px;
-  font-size: var(--font-size-xs);
-  font-weight: 600;
-}
-
 .transcript-container {
   flex: 1;
   overflow-y: auto;
@@ -471,8 +447,15 @@
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-  z-index: 100;
+  z-index: 200;
+  /* Above player bar (100) */
   animation: slideUp 0.2s ease-out;
+  transition: bottom 0.3s ease;
+}
+
+/* Lift up when player bar is present */
+.has-player-bar .selection-toolbar {
+  bottom: 110px;
 }
 
 @keyframes slideUp {
@@ -540,8 +523,15 @@
   background: linear-gradient(135deg, #10b981, #059669);
   border-radius: var(--radius-lg);
   box-shadow: 0 8px 32px rgba(16, 185, 129, 0.4);
-  z-index: 100;
+  z-index: 200;
+  /* Above player bar */
   animation: toastSlideUp 0.3s ease-out, toastFadeOut 0.3s ease-in 2.7s;
+  transition: bottom 0.3s ease;
+}
+
+/* Lift up when player bar is present */
+.has-player-bar .save-toast {
+  bottom: 110px;
 }
 
 @keyframes toastSlideUp {
@@ -592,9 +582,18 @@
   font-weight: 600;
   cursor: pointer;
   box-shadow: 0 4px 16px rgba(138, 180, 248, 0.4);
-  z-index: 100;
+  z-index: 200;
+  /* Above player bar */
   animation: slideUpFade 0.3s ease-out;
-  transition: var(--transition);
+  transition: var(--transition), bottom 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+/* Lift up when player bar is present */
+.has-player-bar .resume-scroll-button {
+  bottom: 110px;
 }
 
 .resume-scroll-button:hover {

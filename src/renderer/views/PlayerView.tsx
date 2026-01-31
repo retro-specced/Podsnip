@@ -309,16 +309,11 @@ function PlayerView() {
       </div>
 
       <div className="player-right" ref={transcriptContainerRef}>
-        <div className="transcript-header">
-          <h3>Transcript</h3>
-          {/* Resume Auto Scroll Button */}
-          {!isAutoScrollEnabled && (
-            <button className="resume-scroll-button" onClick={handleResumeAutoScroll}>
-              Resume Auto-Scroll
-            </button>
-          )}
-          {isTranscribing && <span className="transcribing-badge">Transcribing...</span>}
-        </div>
+        {isCurrentEpisodePlaying && !isAutoScrollEnabled && (
+          <button className="resume-scroll-button" onClick={handleResumeAutoScroll}>
+            <span>⬇️</span> Enable Auto-Scroll
+          </button>
+        )}
 
         <div className="transcript-container" ref={scrollableContainerRef}>
           {isTranscribing && transcribingEpisode?.id === viewingEpisode.id ? (
@@ -368,6 +363,12 @@ function PlayerView() {
           )}
         </div>
       </div>
+      {showSaveToast && (
+        <div className="save-toast">
+          <div className="save-toast-icon">✓</div>
+          <div className="save-toast-text">Note saved!</div>
+        </div>
+      )}
     </div>
   );
 }
