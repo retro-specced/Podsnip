@@ -250,21 +250,23 @@ function NotesView() {
           className="podcast-notes-card"
           onClick={() => setSelectedPodcastId(group.podcastId)}
         >
-          <div className="podcast-notes-header">
-            {group.artworkUrl && (
+          {group.artworkUrl ? (
+            <div className="podcast-notes-artwork-container">
               <img src={group.artworkUrl} alt={group.podcastTitle} className="podcast-notes-artwork" />
-            )}
-            <div className="podcast-notes-info">
-              <h3 className="podcast-notes-title">{group.podcastTitle}</h3>
-              <div className="podcast-notes-count">{group.annotations.length} Notes</div>
             </div>
-          </div>
-          <div className="podcast-notes-preview">
-            <span className="podcast-notes-preview-text">
-              "{group.annotations[0].note_text}"
-            </span>
-            <div className="note-date" style={{ marginTop: '8px', fontSize: '11px' }}>
-              Last edited {formatDate(group.annotations[0].created_at)}
+          ) : (
+            <div className="podcast-notes-artwork-placeholder">
+              <span>🎙️</span>
+            </div>
+          )}
+
+          <div className="podcast-notes-info">
+            <h3 className="podcast-notes-title">{group.podcastTitle}</h3>
+            <div className="podcast-notes-footer">
+              <span className="podcast-notes-count">{group.annotations.length} Notes</span>
+              <div className="podcast-last-updated">
+                Last edited {formatDate(group.annotations[0].created_at)}
+              </div>
             </div>
           </div>
         </div>
