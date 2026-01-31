@@ -367,7 +367,8 @@ function BrowsingView() {
                           navigateToView('notes', { podcastId: currentPodcast?.id, episodeId: episode.id });
                         }}
                       >
-                        📝
+                        <span className="notes-icon">📝</span>
+                        <span className="notes-label">Note Available</span>
                       </div>
                     )}
                   </div>
