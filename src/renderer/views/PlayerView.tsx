@@ -29,7 +29,8 @@ function PlayerView() {
     setPlayingEpisode, // To switch audio
     isAutoScrollEnabled,
     setIsAutoScrollEnabled,
-    setTranscribingEpisode
+    setTranscribingEpisode,
+    transcribingEpisode // Added to check for active transcription
   } = useAppStore();
 
   const transcriptContainerRef = useRef<HTMLDivElement>(null);
@@ -274,14 +275,16 @@ function PlayerView() {
           </div>
 
           <div className="playback-progress">
-            <span className="time-label">{formatTime(currentTime)}</span>
+            <span className="time-label">{formatTime(isCurrentEpisodePlaying ? currentTime : (viewingEpisode.current_position || 0))}</span>
             <input
               type="range"
               min="0"
               max={viewingEpisode.duration || 100}
-              value={currentTime}
+              value={isCurrentEpisodePlaying ? currentTime : (viewingEpisode.current_position || 0)}
               onChange={(e) => handleSeek(Number(e.target.value))}
               className="progress-slider"
+              disabled={!isCurrentEpisodePlaying}
+              style={{ opacity: isCurrentEpisodePlaying ? 1 : 0.6, cursor: isCurrentEpisodePlaying ? 'pointer' : 'not-allowed' }}
             />
             <span className="time-label">{formatTime(viewingEpisode.duration)}</span>
           </div>
@@ -318,7 +321,7 @@ function PlayerView() {
         </div>
 
         <div className="transcript-container" ref={scrollableContainerRef}>
-          {isTranscribing ? (
+          {isTranscribing && transcribingEpisode?.id === viewingEpisode.id ? (
             <div className="transcript-loading">
               <div className="spinner"></div>
               <p>Generating transcript...</p>
@@ -333,7 +336,7 @@ function PlayerView() {
             <>
               <div className="transcript-segments">
                 {transcripts.map((segment, index) => {
-                  const isActive = currentTime >= segment.start_time && currentTime <= segment.end_time;
+                  const isActive = isCurrentEpisodePlaying && currentTime >= segment.start_time && currentTime <= segment.end_time;
                   // We need to maintain activeSegmentIndex state derived from currentTime or store?
                   // Calculated on render is fine.
                   return (
