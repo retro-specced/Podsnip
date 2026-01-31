@@ -198,18 +198,19 @@ function NotesView() {
 
       <div className="note-content">{annotation.note_text}</div>
 
+      {annotation.tags && (
+        <div className="note-tags">
+          {annotation.tags.split(',').filter(t => t.trim()).map((tag, index) => (
+            <span key={index} className="note-tag">
+              #{tag.trim()}
+            </span>
+          ))}
+        </div>
+      )}
+
       <div className="note-footer">
         <div className="note-meta-left">
           <div className="note-date">{formatDate(annotation.created_at)}</div>
-          {annotation.tags && (
-            <div className="note-tags">
-              {annotation.tags.split(',').filter(t => t.trim()).map((tag, index) => (
-                <span key={index} className="note-tag">
-                  #{tag.trim()}
-                </span>
-              ))}
-            </div>
-          )}
         </div>
 
         <div className="note-actions">
