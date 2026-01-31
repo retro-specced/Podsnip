@@ -6,6 +6,7 @@ interface HistorySnapshot {
   podcast: Podcast | null;
   episode: Episode | null;
   scrollPosition?: number;
+  visibleCount?: number;
 }
 
 interface AppStore {
@@ -28,6 +29,8 @@ interface AppStore {
   // Scroll Restoration
   restoredScrollPosition: number | null;
   setRestoredScrollPosition: (pos: number | null) => void;
+  restoredVisibleCount: number | null;
+  setRestoredVisibleCount: (count: number | null) => void;
 
   // Compatibility / Simple Setters
   setCurrentState: (state: AppState) => void;
@@ -86,9 +89,10 @@ interface AppStore {
 export const useAppStore = create<AppStore>((set, get) => ({
   // Initial state
   currentState: 'onboarding',
-  history: [{ view: 'onboarding', podcast: null, episode: null, scrollPosition: 0 }],
+  history: [{ view: 'onboarding', podcast: null, episode: null, scrollPosition: 0, visibleCount: 20 }],
   historyIndex: 0,
   restoredScrollPosition: null,
+  restoredVisibleCount: null,
 
   podcasts: [],
   currentPodcast: null,
@@ -114,6 +118,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   }),
 
   setRestoredScrollPosition: (pos) => set({ restoredScrollPosition: pos }),
+  setRestoredVisibleCount: (count) => set({ restoredVisibleCount: count }),
 
   navigateToView: (view, context = {}) => set((state) => {
     const newSnapshot: HistorySnapshot = {
@@ -125,6 +130,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
         ? (state.episodes.find(e => e.id === context.episodeId) || null)
         : state.currentEpisode,
       scrollPosition: 0,
+      visibleCount: 20,
     };
 
     if (context.replace) {
@@ -160,6 +166,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
         currentPodcast: snapshot.podcast,
         currentEpisode: snapshot.episode,
         restoredScrollPosition: snapshot.scrollPosition || 0,
+        restoredVisibleCount: snapshot.visibleCount || 20,
       };
     }
     return {};
@@ -175,6 +182,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
         currentPodcast: snapshot.podcast,
         currentEpisode: snapshot.episode,
         restoredScrollPosition: snapshot.scrollPosition || 0,
+        restoredVisibleCount: snapshot.visibleCount || 20,
       };
     }
     return {};

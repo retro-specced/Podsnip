@@ -19,6 +19,8 @@ function BrowsingView() {
     updateCurrentSnapshot,
     restoredScrollPosition,
     setRestoredScrollPosition,
+    restoredVisibleCount,
+    setRestoredVisibleCount,
   } = useAppStore();
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -26,6 +28,7 @@ function BrowsingView() {
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'longest' | 'shortest'>('newest');
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(20);
 
   useEffect(() => {
     // Select first podcast by default only if no podcasts are selected
@@ -52,20 +55,40 @@ function BrowsingView() {
     }
   }, [currentPodcast?.id]);
 
-  // Restore scroll position
+  // Restore scroll position and visible count
   useLayoutEffect(() => {
-    if (restoredScrollPosition !== null && scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTop = restoredScrollPosition;
+    if (restoredVisibleCount !== null) {
+      setVisibleCount(restoredVisibleCount);
     }
-  }, [restoredScrollPosition, episodes]); // Scroll after episodes render
+
+    // We need to wait for render with correct count before scrolling
+    requestAnimationFrame(() => {
+      if (restoredScrollPosition !== null && scrollContainerRef.current) {
+        scrollContainerRef.current.scrollTop = restoredScrollPosition;
+      }
+    });
+  }, [restoredScrollPosition, restoredVisibleCount, episodes]); // Scroll after episodes render
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    // Load more when near bottom (200px threshold)
+    if (scrollHeight - scrollTop - clientHeight < 200) {
+      // If we haven't shown all episodes yet
+      if (visibleCount < episodes.length) {
+        setVisibleCount(prev => Math.min(prev + 20, episodes.length));
+      }
+    }
+  };
 
   const handleSelectPodcast = async (podcastId: number) => {
     try {
-      // Reset scroll position for new podcast
+      // Reset scroll position and visible count for new podcast
       if (scrollContainerRef.current) {
         scrollContainerRef.current.scrollTop = 0;
       }
       setRestoredScrollPosition(null); // Prevent restoration effect from interfering
+      setRestoredVisibleCount(null);
+      setVisibleCount(20);
 
       const podcast = await window.api.podcast.get(podcastId);
       setCurrentPodcast(podcast);
@@ -103,9 +126,12 @@ function BrowsingView() {
   };
 
   const handlePlayEpisode = async (episode: Episode) => {
-    // Save scroll position before navigating away
+    // Save scroll position and visible count before navigating away
     if (scrollContainerRef.current) {
-      updateCurrentSnapshot({ scrollPosition: scrollContainerRef.current.scrollTop });
+      updateCurrentSnapshot({
+        scrollPosition: scrollContainerRef.current.scrollTop,
+        visibleCount: visibleCount
+      });
     }
     setCurrentEpisode(episode);
     setCurrentState('player');
@@ -260,8 +286,8 @@ function BrowsingView() {
               </select>
             </div>
 
-            <div className="episodes-list" ref={scrollContainerRef}>
-              {sortedEpisodes.map((episode) => (
+            <div className="episodes-list" ref={scrollContainerRef} onScroll={handleScroll}>
+              {sortedEpisodes.slice(0, visibleCount).map((episode) => (
                 <div key={episode.id} className="episode-item">
                   <div className="episode-content">
                     <h3 className="episode-title">{episode.title}</h3>
