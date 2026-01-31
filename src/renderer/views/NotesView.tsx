@@ -37,6 +37,9 @@ function NotesView() {
   const [filteredAnnotations, setFilteredAnnotations] = useState<EnrichedAnnotation[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest'>('newest');
+  const [timeRange, setTimeRange] = useState<'all' | 'today' | 'week' | 'month' | 'year'>('all');
+
+
   const [selectedPodcastId, setSelectedPodcastId] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<'masonry' | 'podcasts'>(selectedPodcastId ? 'podcasts' : 'masonry');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -54,7 +57,7 @@ function NotesView() {
 
   useEffect(() => {
     filterAndSortAnnotations();
-  }, [annotations, searchQuery, sortBy, selectedTags]);
+  }, [annotations, searchQuery, sortBy, selectedTags, timeRange]);
 
   const loadAnnotations = async () => {
     try {
@@ -71,10 +74,13 @@ function NotesView() {
 
     // Filter by search query
     if (searchQuery) {
+      const lowerQuery = searchQuery.toLowerCase();
       filtered = filtered.filter((annotation) =>
-        annotation.note_text.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        annotation.transcript_text.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (annotation.tags && annotation.tags.toLowerCase().includes(searchQuery.toLowerCase()))
+        annotation.note_text.toLowerCase().includes(lowerQuery) ||
+        annotation.transcript_text.toLowerCase().includes(lowerQuery) ||
+        annotation.episode_title.toLowerCase().includes(lowerQuery) ||
+        (annotation.podcast_title && annotation.podcast_title.toLowerCase().includes(lowerQuery)) ||
+        (annotation.tags && annotation.tags.toLowerCase().includes(lowerQuery))
       );
     }
 
@@ -85,6 +91,22 @@ function NotesView() {
         const noteTags = annotation.tags.split(',').map(t => t.trim());
         // AND logic: Note must contain ALL selected tags
         return selectedTags.every(tag => noteTags.includes(tag));
+      });
+    }
+
+    // Filter by Time Range
+    if (timeRange !== 'all') {
+      const now = new Date();
+      filtered = filtered.filter(annotation => {
+        const date = new Date(annotation.created_at);
+        const diffTime = now.getTime() - date.getTime();
+        const diffDays = diffTime / (1000 * 60 * 60 * 24);
+
+        if (timeRange === 'today') return diffDays < 1 && now.getDate() === date.getDate();
+        if (timeRange === 'week') return diffDays < 7;
+        if (timeRange === 'month') return diffDays < 30;
+        if (timeRange === 'year') return diffDays < 365;
+        return true;
       });
     }
 
@@ -428,6 +450,18 @@ function NotesView() {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="notes-search"
           />
+          <select
+            value={timeRange}
+            onChange={(e) => setTimeRange(e.target.value as any)}
+            className="sort-select"
+            style={{ marginRight: '8px' }}
+          >
+            <option value="all">All Time</option>
+            <option value="today">Today</option>
+            <option value="week">This Week</option>
+            <option value="month">This Month</option>
+            <option value="year">This Year</option>
+          </select>
           <select value={sortBy} onChange={(e) => setSortBy(e.target.value as any)} className="sort-select">
             <option value="newest">Newest First</option>
             <option value="oldest">Oldest First</option>
