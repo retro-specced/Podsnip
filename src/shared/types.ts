@@ -22,6 +22,10 @@ export interface Episode {
   published_date: string;
   download_status: 'none' | 'downloading' | 'downloaded' | 'failed';
   local_path: string | null;
+  // Extended metadata for UI
+  has_notes?: boolean;
+  current_position?: number;
+  completed?: boolean;
 }
 
 export interface Transcript {

@@ -315,18 +315,49 @@ function BrowsingView() {
             <div className="episodes-list" ref={scrollContainerRef} onScroll={handleScroll}>
               {sortedEpisodes.slice(0, visibleCount).map((episode) => (
                 <div key={episode.id} className="episode-item">
+                  <img
+                    src={episode.artwork_url || currentPodcast.artwork_url}
+                    alt={episode.title}
+                    className="episode-artwork-list"
+                  />
                   <div className="episode-content">
-                    <h3 className="episode-title">{episode.title}</h3>
-                    <p className="episode-meta">
-                      {formatDate(episode.published_date)} · {formatDuration(episode.duration)}
-                    </p>
-                    <p className="episode-description">
-                      {truncateHtml(episode.description, 200)}
-                    </p>
+                    <div className="episode-header">
+                      <h3 className="episode-title">{episode.title}</h3>
+                      <button className="play-button-small" onClick={() => handlePlayEpisode(episode)} title="Play">
+                        ▶️
+                      </button>
+                    </div>
+
+                    <div className="episode-meta-row">
+                      <span className="meta-text">{formatDate(episode.published_date)}</span>
+                      <span className="meta-dot">·</span>
+                      <span className="meta-text">{formatDuration(episode.duration)}</span>
+                      {episode.has_notes && (
+                        <span className="notes-indicator" title="Has notes">📝</span>
+                      )}
+                    </div>
+
+                    <div className="episode-description-row">
+                      {truncateHtml(episode.description, 150)}
+                    </div>
+
+                    {((episode.current_position && episode.current_position > 0) || episode.completed) && (
+                      <div className="episode-progress-container">
+                        <div className="progress-bar-bg">
+                          <div
+                            className="progress-bar-fill"
+                            style={{ width: episode.completed ? '100%' : `${(episode.current_position! / episode.duration) * 100}%` }}
+                          />
+                        </div>
+                        <span className="progress-text">
+                          {episode.completed
+                            ? "Finished"
+                            : `${formatDuration(Math.max(0, episode.duration - episode.current_position!))} remaining`
+                          }
+                        </span>
+                      </div>
+                    )}
                   </div>
-                  <button className="play-button" onClick={() => handlePlayEpisode(episode)}>
-                    ▶️ Play
-                  </button>
                 </div>
               ))}
             </div>

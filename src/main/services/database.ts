@@ -259,8 +259,29 @@ export class DatabaseService {
   }
 
   getEpisodesByPodcast(podcastId: number): Episode[] {
-    const stmt = this.db.prepare('SELECT * FROM episodes WHERE podcast_id = ? ORDER BY published_date DESC');
-    return stmt.all(podcastId) as Episode[];
+    const stmt = this.db.prepare(`
+      SELECT 
+        e.*,
+        ps.current_position,
+        ps.completed,
+        (SELECT COUNT(*) 
+         FROM annotations a 
+         JOIN transcripts t ON a.transcript_id = t.id 
+         WHERE t.episode_id = e.id
+        ) > 0 as has_notes
+      FROM episodes e 
+      LEFT JOIN playback_state ps ON e.id = ps.episode_id 
+      WHERE e.podcast_id = ? 
+      ORDER BY e.published_date DESC
+    `);
+    const episodes = stmt.all(podcastId) as any[];
+
+    // Map boolean and number fields correctly if needed (SQLite returns 1/0 for booleans)
+    return episodes.map(ep => ({
+      ...ep,
+      completed: Boolean(ep.completed),
+      has_notes: Boolean(ep.has_notes)
+    }));
   }
 
   updateEpisodeLocalPath(episodeId: number, localPath: string): void {
