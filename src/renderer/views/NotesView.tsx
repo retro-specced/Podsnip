@@ -188,24 +188,6 @@ function NotesView() {
           <h4 className="note-episode-title">{annotation.episode_title}</h4>
           <div className="note-timestamp">{formatTime(annotation.start_time)}</div>
         </div>
-        <button
-          className="note-jump-button"
-          onClick={() => handleJumpToPodcast(annotation)}
-          title="Jump to this moment in the podcast"
-        >
-          <span className="jump-icon">🎧</span>
-          <span className="jump-text">Jump</span>
-        </button>
-        <button
-          className="note-delete"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleDeleteAnnotation(annotation.id);
-          }}
-          title="Delete note"
-        >
-          🗑️
-        </button>
       </div>
 
       <div className="note-transcript">
@@ -216,16 +198,38 @@ function NotesView() {
       <div className="note-content">{annotation.note_text}</div>
 
       <div className="note-footer">
-        <div className="note-date">{formatDate(annotation.created_at)}</div>
-        {annotation.tags && (
-          <div className="note-tags">
-            {annotation.tags.split(',').map((tag, index) => (
-              <span key={index} className="note-tag">
-                {tag}
-              </span>
-            ))}
-          </div>
-        )}
+        <div className="note-meta-left">
+          <div className="note-date">{formatDate(annotation.created_at)}</div>
+          {annotation.tags && (
+            <div className="note-tags">
+              {annotation.tags.split(',').map((tag, index) => (
+                <span key={index} className="note-tag">
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="note-actions">
+          <button
+            className="note-action-button"
+            onClick={() => handleJumpToPodcast(annotation)}
+            title="Jump to podcast"
+          >
+            <span className="action-icon">🎧</span>
+          </button>
+          <button
+            className="note-action-button delete"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDeleteAnnotation(annotation.id);
+            }}
+            title="Delete note"
+          >
+            <span className="action-icon">🗑️</span>
+          </button>
+        </div>
       </div>
     </div>
   );
