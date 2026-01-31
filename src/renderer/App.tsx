@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAppStore } from './store/appStore';
 import OnboardingView from './views/OnboardingView';
 import BrowsingView from './views/BrowsingView';
@@ -11,7 +11,13 @@ import ErrorBanner from './components/ErrorBanner';
 import './styles/App.css';
 
 function App() {
-  const { currentState, podcasts, setPodcasts, setCurrentState } = useAppStore();
+  const {
+    currentState,
+    podcasts,
+    setPodcasts,
+    navigateToView
+  } = useAppStore();
+  const [isInitializing, setIsInitializing] = useState(true);
 
   useEffect(() => {
     // Load podcasts on app start
@@ -23,16 +29,26 @@ function App() {
       const podcasts = await window.api.podcast.list();
       setPodcasts(podcasts);
 
-      // If we have podcasts, move to browsing state
+      // If we have podcasts, move to browsing state and REPLACE history
       if (podcasts.length > 0 && currentState === 'onboarding') {
-        setCurrentState('browsing');
+        navigateToView('browsing', { replace: true });
       }
     } catch (error) {
       console.error('Failed to load podcasts:', error);
+    } finally {
+      setIsInitializing(false);
     }
   };
 
   const renderView = () => {
+    if (isInitializing) {
+      return (
+        <div className="empty-state">
+          <div className="spinner"></div>
+        </div>
+      );
+    }
+
     switch (currentState) {
       case 'onboarding':
         return <OnboardingView />;
