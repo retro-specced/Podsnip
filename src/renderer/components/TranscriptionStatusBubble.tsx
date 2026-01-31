@@ -13,6 +13,45 @@ export default function TranscriptionStatusBubble() {
     } = useAppStore();
 
     const [isExpanded, setIsExpanded] = useState(false);
+    const [showSuccess, setShowSuccess] = useState(false);
+
+    // Detect completion
+    const [wasTranscribing, setWasTranscribing] = useState(false);
+
+    // Effect to handle state transition logic
+    // We need useEffect to detect when isTranscribing changes from true to false
+    // BUT we need to be careful not to trigger on initial mount if false.
+    // However, if we mount and isTranscribing is false, we don't care.
+    // If it's true, we set wasTranscribing true.
+
+    if (isTranscribing && !wasTranscribing) {
+        setWasTranscribing(true);
+    }
+
+    if (!isTranscribing && wasTranscribing) {
+        setWasTranscribing(false);
+        // Only show success if we have a valid recent transcription state
+        if (transcriptionProgress >= 100) {
+            setShowSuccess(true);
+            setTimeout(() => setShowSuccess(false), 5000); // Hide after 5 seconds
+        }
+    }
+
+    // Logic:
+    // If Transcribing -> Show Spinner + Progress (Expandable)
+    // If Success -> Show Checkmark + "Audio Downloaded" (Click to dismiss?)
+    // Else -> Null
+
+    if (showSuccess) {
+        return (
+            <div className="transcription-bubble-container">
+                <button className="transcription-bubble-trigger success">
+                    <span className="bubble-icon">✅</span>
+                    <span className="bubble-label">Audio Downloaded</span>
+                </button>
+            </div>
+        );
+    }
 
     // Hide if not transcribing
     // OR if we are in Player View looking at the transcribing episode (since PlayerView shows progress)

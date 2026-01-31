@@ -89,7 +89,7 @@ function PlayerView() {
     if (viewingEpisode) {
       loadTranscript();
     }
-  }, [viewingEpisode]);
+  }, [viewingEpisode, isTranscribing]);
 
   const isCurrentEpisodePlaying = viewingEpisode?.id === playingEpisode?.id;
 

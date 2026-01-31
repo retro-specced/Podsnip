@@ -29,17 +29,42 @@ export default function GlobalAudioController() {
     useEffect(() => {
         if (playingEpisode) {
             const isNewEpisode = lastEpisodeIdRef.current !== playingEpisode.id;
+            // Detect if same episode gained a local path (downloaded while playing)
+            const gainedLocalPath = !isNewEpisode && playingEpisode.local_path && audioRef.current && !audioRef.current.src.startsWith('file://') && !audioRef.current.src.includes(playingEpisode.local_path);
 
-            // Update ref
-            lastEpisodeIdRef.current = playingEpisode.id;
+            // Or simpler check: if local_path exists and src is different, and ID is same?
+            // Actually, we just need to know if we need to reload.
+            // If ID changed, we reload.
+            // If ID is same, but we now have local_path where we didn't (or src implies stream), we reload.
 
-            if (isNewEpisode && audioRef.current) {
-                // Reset state for new episode
-                hasInitializedSeekRef.current = false;
-                setAudioError(null);
+            if (isNewEpisode) {
+                // Update ref
+                lastEpisodeIdRef.current = playingEpisode.id;
 
-                // Load new source
-                audioRef.current.load();
+                if (audioRef.current) {
+                    // Reset state for new episode
+                    hasInitializedSeekRef.current = false;
+                    setAudioError(null);
+
+                    // Load new source
+                    audioRef.current.load();
+                }
+            } else if (gainedLocalPath) {
+                console.log("Audio downloaded, swapping source to local file.");
+                if (audioRef.current) {
+                    const currentTime = audioRef.current.currentTime;
+                    const wasPlaying = !audioRef.current.paused;
+
+                    // Force reload to pick up new src (which React updates on audio tag)
+                    // But React might not update the DOM src attribute solely by re-render if we don't force it?
+                    // The <audio src={...}> below handles the prop update. 
+                    // We just need to trigger load() and restore time.
+                    audioRef.current.load();
+                    audioRef.current.currentTime = currentTime;
+                    if (wasPlaying) {
+                        audioRef.current.play().catch(e => console.error("Resume after swap failed", e));
+                    }
+                }
             }
         }
     }, [playingEpisode]);
@@ -88,6 +113,16 @@ export default function GlobalAudioController() {
                     setIsTranscribing(true);
                 } else {
                     setIsTranscribing(false);
+                    // Refresh playing episode to get local_path if it's the one we are playing
+                    if (playingEpisode && data.episodeId === playingEpisode.id) {
+                        window.api.episode.get(playingEpisode.id).then(ep => {
+                            if (ep) {
+                                // Update the store's playing episode with the fresh one (containing local_path)
+                                const { setPlayingEpisode } = useAppStore.getState();
+                                setPlayingEpisode(ep);
+                            }
+                        });
+                    }
                 }
             }
         });

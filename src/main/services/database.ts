@@ -74,8 +74,6 @@ export class DatabaseService {
         description TEXT,
         author TEXT,
         artwork_url TEXT,
-        author TEXT,
-        artwork_url TEXT,
         last_updated TEXT DEFAULT CURRENT_TIMESTAMP,
         category TEXT
       )

@@ -32,7 +32,7 @@ export class TranscriptionService {
         return;
       }
 
-      // Download audio file to temp location
+      // Download audio file to persistent location
       console.log('Downloading audio file for transcription...');
       const audioResponse = await axios.get(audioUrl, {
         responseType: 'arraybuffer',
@@ -40,8 +40,18 @@ export class TranscriptionService {
         maxContentLength: 25 * 1024 * 1024, // 25MB limit (OpenAI max)
       });
 
-      // Save to temporary file
-      tempFilePath = path.join(os.tmpdir(), `podsnip-${episodeId}-${Date.now()}.mp3`);
+      // Ensure downloads directory exists
+      const { app } = require('electron');
+      const userDataPath = app.getPath('userData');
+      const downloadsDir = path.join(userDataPath, 'downloads');
+      if (!fs.existsSync(downloadsDir)) {
+        fs.mkdirSync(downloadsDir, { recursive: true });
+      }
+
+      // Save to persistent file
+      // Sanitize filename to avoid weird characters
+      const sanitizedTitle = `episode-${episodeId}`;
+      tempFilePath = path.join(downloadsDir, `${sanitizedTitle}.mp3`);
       fs.writeFileSync(tempFilePath, Buffer.from(audioResponse.data));
 
       // Prepare form data for OpenAI API
@@ -84,15 +94,19 @@ export class TranscriptionService {
             confidence_score: segment.confidence || 0,
           });
         }
+
+        // Update episode with local path
+        if (tempFilePath) {
+          db.updateEpisodeLocalPath(episodeId, tempFilePath);
+        }
+
         console.log(`Transcription complete for episode ${episodeId}. ${result.segments.length} segments stored.`);
       } else {
         throw new Error('No transcript segments returned from API');
       }
 
-      // Clean up temp file
-      if (tempFilePath && fs.existsSync(tempFilePath)) {
-        fs.unlinkSync(tempFilePath);
-      }
+      // Do NOT delete the file on success
+
     } catch (error: any) {
       // Clean up temp file on error
       if (tempFilePath && fs.existsSync(tempFilePath)) {
@@ -100,7 +114,7 @@ export class TranscriptionService {
       }
 
       console.error('Transcription error:', error);
-      
+
       // Provide more specific error messages
       if (error.response?.status === 429) {
         throw new Error('Rate limit exceeded. Please wait a moment and try again, or check your OpenAI API usage limits.');
@@ -111,7 +125,7 @@ export class TranscriptionService {
       } else if (error.response?.data?.error?.message) {
         throw new Error(`OpenAI API error: ${error.response.data.error.message}`);
       }
-      
+
       throw new Error(`Failed to transcribe episode: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
