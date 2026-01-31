@@ -54,6 +54,11 @@ body {
   overflow: hidden;
 }
 
+.app.has-player-bar .main-content {
+  padding-bottom: 90px;
+  /* Height of persistent player */
+}
+
 .main-content {
   flex: 1;
   display: flex;

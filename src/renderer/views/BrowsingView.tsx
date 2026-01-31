@@ -12,7 +12,8 @@ function BrowsingView() {
     episodes,
     setCurrentPodcast,
     setEpisodes,
-    setCurrentEpisode,
+    viewingEpisode,
+    setViewingEpisode,
     setCurrentState,
     setPodcasts,
     setError,
@@ -140,7 +141,8 @@ function BrowsingView() {
         visibleCount: visibleCount
       });
     }
-    setCurrentEpisode(episode);
+    // Only set VIEWING episode, do not auto-play
+    setViewingEpisode(episode);
     setCurrentState('player');
   };
 

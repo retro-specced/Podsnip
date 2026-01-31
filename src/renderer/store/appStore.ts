@@ -4,7 +4,7 @@ import { Podcast, Episode, Transcript, Annotation, AppState } from '../../shared
 interface HistorySnapshot {
   view: AppState;
   podcast: Podcast | null;
-  episode: Episode | null;
+  episode: Episode | null; // This represents the VIEWING episode
   scrollPosition?: number;
   visibleCount?: number;
 }
@@ -45,9 +45,14 @@ interface AppStore {
 
   // Episodes
   episodes: Episode[];
-  currentEpisode: Episode | null;
+  // viewingEpisode: The episode shown in PlayerView (Details/Transcript)
+  viewingEpisode: Episode | null;
+  // playingEpisode: The episode currently producing audio
+  playingEpisode: Episode | null;
+
   setEpisodes: (episodes: Episode[]) => void;
-  setCurrentEpisode: (episode: Episode | null) => void;
+  setViewingEpisode: (episode: Episode | null) => void;
+  setPlayingEpisode: (episode: Episode | null) => void;
 
   // Transcripts
   transcripts: Transcript[];
@@ -74,6 +79,19 @@ interface AppStore {
   error: string | null;
   setIsLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
+  isAutoScrollEnabled: boolean;
+  setIsAutoScrollEnabled: (enabled: boolean) => void;
+
+  // Transcription State
+  transcribingEpisode: Episode | null; // The episode currently being transcribed
+  setTranscribingEpisode: (episode: Episode | null) => void;
+  isTranscribing: boolean;
+  transcriptionProgress: number;
+  transcriptionStage: string;
+  setIsTranscribing: (transcribing: boolean) => void;
+  setTranscriptionProgress: (progress: number) => void;
+  setTranscriptionStage: (stage: string) => void;
+
 
   // Selected segments
   selectedSegments: Transcript[];
@@ -97,8 +115,10 @@ export const useAppStore = create<AppStore>((set, get) => ({
   podcasts: [],
   currentPodcast: null,
   episodes: [],
-  currentEpisode: null,
+  viewingEpisode: null,
+  playingEpisode: null,
   transcripts: [],
+  transcribingEpisode: null,
   annotations: [],
   currentAnnotation: null,
   isPlaying: false,
@@ -107,10 +127,13 @@ export const useAppStore = create<AppStore>((set, get) => ({
   jumpToTime: null,
   isLoading: false,
   error: null,
+  isAutoScrollEnabled: true,
   selectedSegments: [],
   showSaveToast: false,
 
   // Actions
+  setIsAutoScrollEnabled: (enabled) => set({ isAutoScrollEnabled: enabled }),
+
   updateCurrentSnapshot: (updates) => set((state) => {
     const newHistory = [...state.history];
     newHistory[state.historyIndex] = { ...newHistory[state.historyIndex], ...updates };
@@ -128,23 +151,23 @@ export const useAppStore = create<AppStore>((set, get) => ({
         : state.currentPodcast,
       episode: context.episodeId !== undefined
         ? (state.episodes.find(e => e.id === context.episodeId) || null)
-        : state.currentEpisode,
-      scrollPosition: 0,
-      visibleCount: 20,
+        : state.viewingEpisode // Default to current viewing episode
     };
 
+    let newHistory = [...state.history];
+    // If replace is true, overwrite current entry
     if (context.replace) {
-      const newHistory = [...state.history];
       newHistory[state.historyIndex] = newSnapshot;
       return {
         currentState: view,
         history: newHistory,
         currentPodcast: newSnapshot.podcast,
-        currentEpisode: newSnapshot.episode,
+        viewingEpisode: newSnapshot.episode
       };
     }
 
-    const newHistory = state.history.slice(0, state.historyIndex + 1);
+    // Otherwise push new entry
+    newHistory = newHistory.slice(0, state.historyIndex + 1);
     newHistory.push(newSnapshot);
 
     return {
@@ -152,7 +175,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
       history: newHistory,
       historyIndex: newHistory.length - 1,
       currentPodcast: newSnapshot.podcast,
-      currentEpisode: newSnapshot.episode,
+      viewingEpisode: newSnapshot.episode,
     };
   }),
 
@@ -164,7 +187,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
         historyIndex: newIndex,
         currentState: snapshot.view,
         currentPodcast: snapshot.podcast,
-        currentEpisode: snapshot.episode,
+        viewingEpisode: snapshot.episode,
+        // playingEpisode remains untouched!
         restoredScrollPosition: snapshot.scrollPosition || 0,
         restoredVisibleCount: snapshot.visibleCount || 20,
       };
@@ -180,7 +204,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
         historyIndex: newIndex,
         currentState: snapshot.view,
         currentPodcast: snapshot.podcast,
-        currentEpisode: snapshot.episode,
+        viewingEpisode: snapshot.episode,
+        // playingEpisode remains untouched!
         restoredScrollPosition: snapshot.scrollPosition || 0,
         restoredVisibleCount: snapshot.visibleCount || 20,
       };
@@ -191,18 +216,18 @@ export const useAppStore = create<AppStore>((set, get) => ({
   canGoBack: () => get().historyIndex > 0,
   canGoForward: () => get().historyIndex < get().history.length - 1,
 
-  setCurrentState: (state) => get().navigateToView(state),
+  setCurrentState: (state) => set((s) => ({ ...s, currentState: state })),
 
   setPodcasts: (podcasts) => set({ podcasts }),
   setCurrentPodcast: (podcast) => set({ currentPodcast: podcast }),
   addPodcast: (podcast) => set((state) => ({ podcasts: [...state.podcasts, podcast] })),
-  removePodcast: (podcastId) =>
-    set((state) => ({
-      podcasts: state.podcasts.filter((p) => p.id !== podcastId),
-    })),
+  removePodcast: (podcastId) => set((state) => ({
+    podcasts: state.podcasts.filter(p => p.id !== podcastId)
+  })),
 
   setEpisodes: (episodes) => set({ episodes }),
-  setCurrentEpisode: (episode) => set({ currentEpisode: episode }),
+  setViewingEpisode: (episode) => set({ viewingEpisode: episode }),
+  setPlayingEpisode: (episode) => set({ playingEpisode: episode }),
 
   setTranscripts: (transcripts) => set({ transcripts }),
 
@@ -217,10 +242,16 @@ export const useAppStore = create<AppStore>((set, get) => ({
   setIsLoading: (loading) => set({ isLoading: loading }),
   setError: (error) => set({ error }),
 
+  setTranscribingEpisode: (episode) => set({ transcribingEpisode: episode }),
+  setIsTranscribing: (transcribing) => set({ isTranscribing: transcribing }),
+  setTranscriptionProgress: (progress) => set({ transcriptionProgress: progress }),
+  setTranscriptionStage: (stage) => set({ transcriptionStage: stage }),
+
+
   setSelectedSegments: (segments) => set({ selectedSegments: segments }),
   toggleSegmentSelection: (segment) => set((state) => {
-    const isSelected = state.selectedSegments.some(s => s.id === segment.id);
-    if (isSelected) {
+    const exists = state.selectedSegments.find(s => s.id === segment.id);
+    if (exists) {
       return { selectedSegments: state.selectedSegments.filter(s => s.id !== segment.id) };
     } else {
       return { selectedSegments: [...state.selectedSegments, segment] };

@@ -200,6 +200,81 @@
   text-align: center;
 }
 
+/* Revert styles for restored layout */
+.player-view {
+  display: flex;
+  flex: 1;
+  height: 100%;
+  overflow: hidden;
+  gap: var(--spacing-lg);
+}
+
+.player-left {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  max-width: 450px;
+  overflow-y: auto;
+  padding-bottom: 20px;
+}
+
+.player-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--spacing-xl);
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-color);
+  text-align: center;
+}
+
+.player-artwork {
+  width: 250px;
+  height: 250px;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  margin-bottom: var(--spacing-lg);
+  object-fit: cover;
+  background-color: #eee;
+}
+
+/* Rest of styles consistent with previous version */
+.player-episode-title {
+  margin-bottom: var(--spacing-lg);
+  font-size: 1.5rem;
+  color: var(--text-primary);
+}
+
+/* Ensure controls are visible */
+.playback-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
+}
+
+.playback-progress {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+}
+
+
+.player-transcript-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--surface);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  padding: var(--spacing-lg);
+}
+
 .player-right {
   flex: 2;
   display: flex;

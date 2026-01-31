@@ -1,7 +1,21 @@
 import { useAppStore } from '../store/appStore';
 import '../styles/TopBar.css';
+import TranscriptionStatusBubble from './TranscriptionStatusBubble';
 
 function TopBar() {
+    // ... (imports/exports usually handled by context, but replace_file_content handles snippets)
+    // Wait, I need to add the import at the top too.
+    // I'll do a MultiReplace? Or two replaces?
+    // Or just replace the whole file content if small? 
+    // It's small. I'll use replace_file_content with enough context.
+    // Actually, insert import at top first?
+    // Let's do it in one go if I can match the structure.
+    // TopBar is 70 lines.
+    // I will just add the component in the return.
+
+    // The import needs to be added. 
+    // I'll replace the StartLine 1.
+
     const {
         currentState,
         navigateToView,
@@ -54,6 +68,7 @@ function TopBar() {
             </div>
 
             <div className="top-bar-right">
+                <TranscriptionStatusBubble />
                 <button
                     className={`settings-btn ${currentState === 'settings' ? 'active' : ''}`}
                     onClick={() => navigateToView('settings')}

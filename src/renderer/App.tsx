@@ -10,12 +10,17 @@ import TopBar from './components/TopBar';
 import ErrorBanner from './components/ErrorBanner';
 import './styles/App.css';
 
+import GlobalAudioController from './components/GlobalAudioController';
+import PersistentPlayerBar from './components/PersistentPlayerBar';
+
 function App() {
   const {
     currentState,
     podcasts,
     setPodcasts,
-    navigateToView
+    navigateToView,
+    viewingEpisode,
+    playingEpisode
   } = useAppStore();
   const [isInitializing, setIsInitializing] = useState(true);
 
@@ -67,13 +72,19 @@ function App() {
     }
   };
 
+  // Show player bar if we have a playing episode.
+  // Hide it if we are on the Player View for the SAME episode.
+  const hasPlayerBar = !!playingEpisode && !(currentState === 'player' && viewingEpisode?.id === playingEpisode.id);
+
   return (
-    <div className="app">
+    <div className={`app ${hasPlayerBar ? 'has-player-bar' : ''}`}>
+      <GlobalAudioController />
       {currentState !== 'onboarding' && <TopBar />}
       <div className="main-content">
         <ErrorBanner />
         {renderView()}
       </div>
+      {hasPlayerBar && <PersistentPlayerBar />}
     </div>
   );
 }
