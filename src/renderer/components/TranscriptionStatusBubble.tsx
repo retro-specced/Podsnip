@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useAppStore } from '../store/appStore';
 import '../styles/TranscriptionBubble.css';
 
@@ -9,21 +9,19 @@ export default function TranscriptionStatusBubble() {
         transcriptionProgress,
         transcriptionStage,
         viewingEpisode,
-        currentState // Added to check if we are actually looking at the player
+        currentState,
+        navigateToView // Extract navigation function
     } = useAppStore();
 
     const [isExpanded, setIsExpanded] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
 
+    const containerRef = useRef<HTMLDivElement>(null);
+
     // Detect completion
     const [wasTranscribing, setWasTranscribing] = useState(false);
 
     // Effect to handle state transition logic
-    // We need useEffect to detect when isTranscribing changes from true to false
-    // BUT we need to be careful not to trigger on initial mount if false.
-    // However, if we mount and isTranscribing is false, we don't care.
-    // If it's true, we set wasTranscribing true.
-
     if (isTranscribing && !wasTranscribing) {
         setWasTranscribing(true);
     }
@@ -36,6 +34,23 @@ export default function TranscriptionStatusBubble() {
             setTimeout(() => setShowSuccess(false), 5000); // Hide after 5 seconds
         }
     }
+
+    // Click outside to close
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+                setIsExpanded(false);
+            }
+        }
+
+        if (isExpanded) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [isExpanded]);
 
     // Logic:
     // If Transcribing -> Show Spinner + Progress (Expandable)
@@ -59,7 +74,7 @@ export default function TranscriptionStatusBubble() {
     if (currentState === 'player' && viewingEpisode?.id === transcribingEpisode.id) return null;
 
     return (
-        <div className="transcription-bubble-container">
+        <div className="transcription-bubble-container" ref={containerRef}>
             <button
                 className={`transcription-bubble-trigger ${isExpanded ? 'active' : ''}`}
                 onClick={() => setIsExpanded(!isExpanded)}
@@ -75,7 +90,16 @@ export default function TranscriptionStatusBubble() {
                         <button className="close-btn" onClick={() => setIsExpanded(false)}>×</button>
                     </div>
 
-                    <div className="popover-content">
+                    <div
+                        className="popover-content clickable"
+                        onClick={() => {
+                            if (transcribingEpisode) {
+                                navigateToView('player', { episodeId: transcribingEpisode.id });
+                                setIsExpanded(false);
+                            }
+                        }}
+                        title="Go to Episode"
+                    >
                         <div className="popover-row">
                             <img
                                 src={transcribingEpisode.artwork_url || ''}
@@ -100,11 +124,6 @@ export default function TranscriptionStatusBubble() {
                                 ></div>
                             </div>
                             <span className="popover-progress-text">{transcriptionProgress}%</span>
-                        </div>
-
-                        {/* Estimated time is hard to calculate without backend support, omitting for now or mocking */}
-                        <div className="popover-estimate">
-                            Estimated time remaining: --:--
                         </div>
                     </div>
                 </div>

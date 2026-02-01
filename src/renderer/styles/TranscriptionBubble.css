@@ -54,7 +54,8 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
+    /* Reduced to pull content closer */
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     padding-bottom: 8px;
 }
@@ -79,8 +80,27 @@
     color: var(--text-primary);
 }
 
+.popover-content {
+    transition: background 0.2s ease;
+    border-radius: var(--radius-md);
+    margin: 0 -8px;
+    /* Negative margin to pull highlight to edges */
+    padding: 12px 12px;
+    /* Increased vertical padding for better centering balance */
+}
+
+.popover-content.clickable {
+    cursor: pointer;
+}
+
+.popover-content.clickable:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
 .popover-row {
     display: flex;
+    align-items: center;
+    /* Center artwork and info vertically */
     gap: 12px;
     margin-bottom: 12px;
 }
@@ -91,6 +111,8 @@
     border-radius: 6px;
     object-fit: cover;
     background: #333;
+    flex-shrink: 0;
+    /* Prevent artwork compression */
 }
 
 .popover-info {
@@ -99,6 +121,9 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
+    /* Vertical centering of text block */
+    gap: 2px;
+    /* Consistent gap between title and stage */
 }
 
 .popover-episode-title {

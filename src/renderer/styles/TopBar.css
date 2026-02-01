@@ -1,87 +1,145 @@
+/* TopBar.css - UI/UX Pro Max Refined */
 .top-bar {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: var(--spacing-lg) var(--spacing-xl);
-    height: 80px;
+    padding: 0 var(--spacing-lg);
+    /* Removed vertical padding to let height control centering */
+    height: 56px;
+    /* Reduced from 80px for a sleeker profile */
     -webkit-app-region: drag;
     z-index: 50;
     background: transparent;
-    transition: background 0.3s ease;
+    transition: background 0.2s ease;
+    border-bottom: 1px solid transparent;
+    /* Prepare for border transition */
 }
 
-/* Optional: Add background when scrolled if we implement scroll detection later */
+/* Optional background when scrolled */
 .top-bar.scrolled {
-    background: rgba(2, 6, 23, 0.8);
-    backdrop-filter: blur(12px);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    background: rgba(0, 0, 0, 0.85);
+    /* Darker OLED background */
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border-color);
 }
 
+/* Left Section: Nav Controls + Links */
 .top-bar-left {
     display: flex;
     align-items: center;
-    gap: var(--spacing-md);
+    gap: var(--spacing-lg);
+    /* Increased gap between controls and links for breathing room */
+    height: 100%;
 }
 
-.back-button {
+/* Navigation Controls (< >) */
+.nav-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
     -webkit-app-region: no-drag;
-    padding: var(--spacing-sm);
+}
+
+.nav-control-btn {
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
-    color: var(--text-secondary);
-    transition: var(--transition);
     display: flex;
     align-items: center;
     justify-content: center;
+    color: var(--text-secondary);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: var(--transition);
 }
 
-.back-button:hover {
-    background: rgba(255, 255, 255, 0.1);
+.nav-control-btn:hover:not(:disabled) {
+    background: var(--surface-highlight);
     color: var(--text-primary);
-    transform: translateX(-2px);
 }
 
-.page-title {
-    font-family: var(--font-family-display);
-    font-size: var(--font-size-xl);
-    font-weight: 700;
+.nav-control-btn:disabled {
+    opacity: 0.3;
+    cursor: default;
+}
+
+/* Navigation Links (Library, Notes) */
+.nav-links {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    -webkit-app-region: no-drag;
+    height: 100%;
+}
+
+.nav-link {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    /* Explicit gap between icon and text */
+    padding: 6px 12px;
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: var(--transition);
+    font-family: var(--font-family);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    height: 36px;
+    /* Fixed height for consistency */
+}
+
+.nav-link:hover {
+    background: var(--surface-highlight);
     color: var(--text-primary);
-    letter-spacing: -0.01em;
 }
 
+.nav-link.active {
+    background: var(--surface-highlight);
+    color: var(--text-primary);
+}
+
+.nav-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* Ensure icon container doesn't shift alignment */
+}
+
+/* Right Section: Settings */
 .top-bar-right {
     -webkit-app-region: no-drag;
     display: flex;
     align-items: center;
     gap: var(--spacing-md);
+    height: 100%;
 }
 
-.top-bar-button {
-    padding: var(--spacing-sm);
-    border-radius: var(--radius-md);
-    color: var(--text-secondary);
-    transition: var(--transition);
+.settings-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
+    color: var(--text-secondary);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: var(--transition);
 }
 
-.top-bar-button:hover {
-    background: rgba(255, 255, 255, 0.1);
+.settings-btn:hover {
+    background: var(--surface-highlight);
+    color: var(--text-primary);
+    transform: rotate(45deg);
+    /* Subtle playful interaction */
+}
+
+.settings-btn.active {
     color: var(--primary-color);
-}
-
-.logo-container {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-sm);
-}
-
-.app-logo {
-    font-family: var(--font-family-display);
-    font-weight: 900;
-    font-size: 24px;
-    background: linear-gradient(135deg, var(--primary-color), #38bdf8);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    text-shadow: 0 0 20px rgba(96, 165, 250, 0.3);
+    background: var(--primary-glow);
 }
