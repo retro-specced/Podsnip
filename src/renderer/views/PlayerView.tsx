@@ -41,6 +41,7 @@ function PlayerView() {
   const isProgrammaticScrollRef = useRef(false);
   const lastClickedIndexRef = useRef<number | null>(null);
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const allowInstantScrollRef = useRef(true);
 
   // Helper functions
   const formatTime = (seconds: number) => {
@@ -115,7 +116,10 @@ function PlayerView() {
     const activeElement = document.querySelector('.transcript-segment.active');
     if (activeElement && scrollableContainerRef.current) {
       isProgrammaticScrollRef.current = true;
-      activeElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+      // Use 'auto' (instant) if within the initial mount window, otherwise 'smooth'
+      const behavior = allowInstantScrollRef.current ? 'auto' : 'smooth';
+      activeElement.scrollIntoView({ behavior, block: 'center' });
 
       if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
       scrollTimeoutRef.current = setTimeout(() => {
@@ -144,18 +148,27 @@ function PlayerView() {
     }
   }, [showSaveToast]);
 
-  // 6. Initial Scroll on Mount (scrolling to active segment even if auto-scroll is paused)
+  // 6. Disable instant scroll window after mount
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      allowInstantScrollRef.current = false;
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // 7. Initial Scroll / Sync
   useEffect(() => {
     if (!isCurrentEpisodePlaying) return;
-    if (isAutoScrollEnabled) return; // Allow the auto-scroll effect to handle positioning if enabled
+    if (isAutoScrollEnabled) return;
 
     // Small delay to ensure DOM is ready
     const timer = setTimeout(() => {
       const activeElement = document.querySelector('.transcript-segment.active');
       if (activeElement) {
-        activeElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const behavior = allowInstantScrollRef.current ? 'auto' : 'smooth';
+        activeElement.scrollIntoView({ behavior, block: 'center' });
       }
-    }, 500);
+    }, 100);
     return () => clearTimeout(timer);
   }, [isCurrentEpisodePlaying]);
 
