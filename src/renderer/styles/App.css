@@ -102,9 +102,9 @@ h6 {
   background: var(--background);
 }
 
-.app.has-player-bar .main-content {
+/* .app.has-player-bar .main-content {
   padding-bottom: 90px;
-}
+} REMOVED to allow content behind player */
 
 .main-content {
   flex: 1;

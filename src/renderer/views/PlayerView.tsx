@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAppStore } from '../store/appStore';
 import { Transcript } from '../../shared/types';
-import { Play, Pause, RotateCcw, RotateCw, PenTool, ArrowDown, Check, Sparkles } from 'lucide-react';
+import { Play, Pause, RotateCcw, RotateCw, PenTool, ArrowDown, Check } from 'lucide-react';
 import '../styles/PlayerView.css';
 
 function PlayerView() {
@@ -17,7 +17,6 @@ function PlayerView() {
     toggleSegmentSelection,
     clearSelectedSegments,
     selectedSegments,
-    setCurrentState,
     setError,
     showSaveToast,
     setShowSaveToast,
@@ -41,6 +40,7 @@ function PlayerView() {
   // const [isAutoScrollPaused, setIsAutoScrollPaused] = useState(false); // Replaced by global state
   const isProgrammaticScrollRef = useRef(false);
   const lastClickedIndexRef = useRef<number | null>(null);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Helper functions
   const formatTime = (seconds: number) => {
@@ -80,9 +80,11 @@ function PlayerView() {
     if (activeElement) {
       activeElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
-    setTimeout(() => {
+
+    if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+    scrollTimeoutRef.current = setTimeout(() => {
       isProgrammaticScrollRef.current = false;
-    }, 500);
+    }, 1000);
   };
 
   // Effects
@@ -114,7 +116,11 @@ function PlayerView() {
     if (activeElement && scrollableContainerRef.current) {
       isProgrammaticScrollRef.current = true;
       activeElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      setTimeout(() => isProgrammaticScrollRef.current = false, 500);
+
+      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+      scrollTimeoutRef.current = setTimeout(() => {
+        isProgrammaticScrollRef.current = false;
+      }, 1000);
     }
   }, [activeSegmentIndex, isAutoScrollEnabled, isCurrentEpisodePlaying]);
 
@@ -141,6 +147,7 @@ function PlayerView() {
   // 6. Initial Scroll on Mount (scrolling to active segment even if auto-scroll is paused)
   useEffect(() => {
     if (!isCurrentEpisodePlaying) return;
+    if (isAutoScrollEnabled) return; // Allow the auto-scroll effect to handle positioning if enabled
 
     // Small delay to ensure DOM is ready
     const timer = setTimeout(() => {

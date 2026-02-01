@@ -18,7 +18,8 @@
   border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
-  padding: var(--spacing-xl) 0;
+  padding: var(--spacing-xl) 0 120px;
+  /* Added bottom padding for player clearance */
   overflow-y: auto;
 }
 
@@ -369,7 +370,7 @@
   flex: 1;
   overflow-y: auto;
   padding: var(--spacing-lg) var(--spacing-2xl) 140px;
-  /* Match side padding, added top padding */
+  /* Match side padding, added top padding & bottom clearance */
 }
 
 /* Episode Item */

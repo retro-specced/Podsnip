@@ -63,7 +63,8 @@
   min-height: 0;
   /* Important for flex child scrolling */
   /* Add padding to bottom to avoid content being cut off */
-  padding-bottom: var(--spacing-xl);
+  padding-bottom: 120px;
+  /* Added bottom padding for player clearance */
 }
 
 .notes-list {

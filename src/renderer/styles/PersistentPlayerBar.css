@@ -1,33 +1,52 @@
 /* PersistentPlayerBar.css */
 .persistent-player-bar {
     position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 90px;
-    background: rgba(15, 23, 42, 0.85);
-    /* OLED Dark Glass */
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    bottom: 24px;
+    /* Floating effect! Lifted from bottom */
+    left: 24px;
+    /* Inset from edges */
+    right: 24px;
+    height: 80px;
+    /* Slightly compact */
+    margin: 0 auto;
+    max-width: 1200px;
+    /* Constrained max width for better aesthetic on ultra-wide */
+
+    background: rgba(2, 6, 23, 0.60);
+    /* Deep OLED Glass - More Transparent */
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
+    /* Rounded pill shape */
+
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 0 var(--spacing-xl);
     gap: var(--spacing-lg);
     z-index: 100;
-    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
-    animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    box-shadow:
+        0 20px 40px -10px rgba(0, 0, 0, 0.6),
+        /* Deep drop shadow */
+        0 0 20px rgba(255, 255, 255, 0.03) inset;
+    /* Subtle inner rim */
+
+    animation: slideUp 0.4s cubic-bezier(0.2, 0, 0, 1);
     transition: transform 0.3s ease;
 }
 
 @keyframes slideUp {
     from {
-        transform: translateY(100%);
+        transform: translateY(150%);
+        opacity: 0;
     }
 
     to {
         transform: translateY(0);
+        opacity: 1;
     }
 }
 
@@ -38,16 +57,32 @@
     gap: var(--spacing-md);
     width: 25%;
     min-width: 200px;
+    padding: 8px;
+    /* Added padding for hover area */
+    margin: -8px 0 -8px -8px;
+    /* Negative margin to expand hit area without shifting layout */
+    border-radius: 12px;
+    transition: background 0.2s ease;
+}
+
+.player-bar-left.clickable {
+    cursor: pointer;
+}
+
+.player-bar-left.clickable:hover {
+    background: rgba(255, 255, 255, 0.1);
 }
 
 .player-bar-artwork {
-    width: 56px;
-    height: 56px;
-    border-radius: var(--radius-sm);
+    width: 48px;
+    /* Slightly smaller for balance */
+    height: 48px;
+    border-radius: 8px;
+    /* Smooth corners */
     object-fit: cover;
     background: var(--surface-highlight);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: var(--shadow);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .player-bar-info {
@@ -55,6 +90,7 @@
     flex-direction: column;
     justify-content: center;
     overflow: hidden;
+    gap: 2px;
 }
 
 .player-bar-title {
@@ -64,15 +100,17 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    margin-bottom: 2px;
+    letter-spacing: -0.01em;
 }
 
 .player-bar-podcast {
     font-size: 12px;
     color: var(--text-secondary);
+    font-weight: 500;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    opacity: 0.8;
 }
 
 /* CENTER */

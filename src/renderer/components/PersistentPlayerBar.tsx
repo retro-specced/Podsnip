@@ -30,7 +30,8 @@ export default function PersistentPlayerBar() {
         transcriptionProgress, // Added
         setTranscriptionStage,
         setError,
-        navigateToView // Added for navigation
+        navigateToView, // Added for navigation
+        podcasts // Added to look up podcast title
     } = useAppStore();
 
     // Local state to track if we have a transcript for the PLAYING episode
@@ -109,14 +110,25 @@ export default function PersistentPlayerBar() {
     return (
         <div className="persistent-player-bar">
             {/* 1. Left: Metadata */}
-            <div className="player-bar-left">
+            {/* 1. Left: Metadata */}
+            <div
+                className="player-bar-left clickable"
+                onClick={() => {
+                    setIsAutoScrollEnabled(true); // Explicitly enable auto-scroll
+                    navigateToView('player', { episodeId: playingEpisode.id });
+                }}
+                title="Go to Fullscreen Player"
+            >
                 <img
                     src={playingEpisode.artwork_url || ''}
                     alt="Artwork"
                     className="player-bar-artwork"
                 />
                 <div className="player-bar-info">
-                    <div className="player-bar-title" title={playingEpisode.title}>{playingEpisode.title}</div>
+                    <div className="player-bar-title">{playingEpisode.title}</div>
+                    <div className="player-bar-podcast">
+                        {podcasts.find(p => p.id === playingEpisode.podcast_id)?.title || 'Unknown Podcast'}
+                    </div>
                 </div>
             </div>
 
