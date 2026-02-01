@@ -3,6 +3,7 @@ import { useAppStore } from '../store/appStore';
 import { Annotation } from '../../shared/types';
 import '../styles/NotesView.css';
 import { format } from 'date-fns';
+import { ScrollableContainer } from '../components/ScrollableContainer';
 
 interface EnrichedAnnotation extends Annotation {
   transcript_text: string;
@@ -278,7 +279,9 @@ function NotesView() {
         episode_id: annotation.episode_id,
         start_time: annotation.start_time,
         end_time: annotation.end_time,
-        text: annotation.transcript_text
+        text: annotation.transcript_text,
+        segment_index: -1,
+        confidence_score: 1.0
       }]);
 
       // Capture scroll before navigating away
@@ -578,7 +581,7 @@ function NotesView() {
         )}
       </div>
 
-      <div className="notes-content-area" ref={scrollContainerRef}>
+      <ScrollableContainer className="notes-content-area" innerRef={scrollContainerRef}>
         {filteredAnnotations.length > 0 ? (
           viewMode === 'masonry' ? (
             renderMasonryGrid()
@@ -592,7 +595,7 @@ function NotesView() {
             <p>Start annotating podcast episodes to see your notes here</p>
           </div>
         )}
-      </div>
+      </ScrollableContainer>
     </div>
   );
 }

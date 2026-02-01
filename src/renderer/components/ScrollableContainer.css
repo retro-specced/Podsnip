@@ -1,0 +1,71 @@
+/* ScrollableContainer.css */
+.custom-scroll-container {
+    position: relative;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+    /* Container itself manages layout */
+    display: flex;
+    flex-direction: column;
+}
+
+/* The actual scrolling element */
+.scrollable-content {
+    flex: 1;
+    overflow-y: scroll;
+    /* Force scrolling */
+    scrollbar-width: none;
+    /* Firefox */
+    -ms-overflow-style: none;
+    /* IE/Edge */
+    position: relative;
+    height: 100%;
+    /* Ensure it fills container */
+    width: 100%;
+}
+
+/* Hide Native Scrollbar */
+.scrollable-content::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+}
+
+/* Custom Scrollbar Track */
+.custom-scrollbar-track {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 4px;
+    /* Minimal offset */
+    width: 6px;
+    z-index: 50;
+    pointer-events: none;
+    /* Let clicks pass unless grabbing */
+    opacity: 0;
+    transition: opacity 0.5s ease;
+}
+
+.custom-scrollbar-track.visible {
+    opacity: 1;
+}
+
+/* Custom Scrollbar Thumb */
+.custom-scrollbar-thumb {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 10px;
+    cursor: pointer;
+    pointer-events: auto;
+    /* Enable grabbing */
+    transition: background-color 0.2s;
+    position: absolute;
+    /* Needed for transform movement inside track */
+    top: 0;
+    /* Base position */
+}
+
+.custom-scrollbar-thumb:hover,
+.custom-scrollbar-thumb:active {
+    background: rgba(255, 255, 255, 0.5);
+}

@@ -2,7 +2,8 @@ import { useEffect, useState, useRef, useLayoutEffect, useMemo } from 'react';
 import { useAppStore } from '../store/appStore';
 import { Episode } from '../../shared/types';
 import AddPodcastModal from '../components/AddPodcastModal';
-import { Plus, Trash2, RefreshCw, Mic, FileText, Play } from 'lucide-react';
+import { Plus, Trash2, RefreshCw, Mic, FileText } from 'lucide-react';
+import { ScrollableContainer } from '../components/ScrollableContainer';
 import '../styles/BrowsingView.css';
 
 // Updated with Add Podcast button - v2
@@ -13,7 +14,7 @@ function BrowsingView() {
     episodes,
     setCurrentPodcast,
     setEpisodes,
-    setCurrentState,
+
     setPodcasts,
     setError,
     updateCurrentSnapshot,
@@ -264,7 +265,7 @@ function BrowsingView() {
   return (
     <div className="browsing-view">
       <div className="browsing-left">
-        <div className="podcast-list">
+        <ScrollableContainer className="podcast-list">
           <div className="podcast-list-header">
             <h2 className="section-title">Your Podcasts</h2>
             <button
@@ -303,7 +304,7 @@ function BrowsingView() {
               </button>
             </div>
           ))}
-        </div>
+        </ScrollableContainer>
       </div>
 
       <div className="browsing-right">
@@ -386,7 +387,7 @@ function BrowsingView() {
               </select>
             </div>
 
-            <div className="episodes-list" ref={scrollContainerRef} onScroll={handleScroll}>
+            <ScrollableContainer className="episodes-list" innerRef={scrollContainerRef} onScroll={handleScroll}>
               {sortedEpisodes.slice(0, visibleCount).map((episode) => (
                 <div
                   key={episode.id}
@@ -447,7 +448,7 @@ function BrowsingView() {
                   </div>
                 </div>
               ))}
-            </div>
+            </ScrollableContainer>
           </>
         ) : (
           <div className="empty-state">

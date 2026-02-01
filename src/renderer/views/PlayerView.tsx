@@ -1,7 +1,9 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../store/appStore';
 import { Transcript } from '../../shared/types';
-import { Play, Pause, RotateCcw, RotateCw, PenTool, ArrowDown, Check, Sparkles } from 'lucide-react';
+import { ArrowDown, PenTool, Sparkles, Check } from 'lucide-react';
+import { ScrollableContainer } from '../components/ScrollableContainer';
 import '../styles/PlayerView.css';
 
 function PlayerView() {
@@ -10,8 +12,6 @@ function PlayerView() {
     playingEpisode, // The episode we are LISTENING to
     transcripts,
     currentTime,
-    isPlaying,
-    playbackSpeed,
     setTranscripts,
     setSelectedSegments,
     toggleSegmentSelection,
@@ -26,12 +26,13 @@ function PlayerView() {
     setIsTranscribing,
     setTranscriptionProgress,
     setTranscriptionStage,
-    setPlayingEpisode, // To switch audio
     isAutoScrollEnabled,
     setIsAutoScrollEnabled,
     setTranscribingEpisode,
     transcribingEpisode, // Added to check for active transcription
-    navigateToView // Added for navigation
+    navigateToView, // Added for navigation
+    podcasts, // Added to get podcast title
+    setAnnotationSource // Added to manage return context
   } = useAppStore();
 
   const transcriptContainerRef = useRef<HTMLDivElement>(null);
@@ -44,6 +45,7 @@ function PlayerView() {
   const allowInstantScrollRef = useRef(true);
   const [isTranscriptReady, setIsTranscriptReady] = useState(false);
   const [isRendering, setIsRendering] = useState(true);
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
 
   // Helper functions
   const formatTime = (seconds: number) => {
@@ -60,6 +62,15 @@ function PlayerView() {
 
   const handleTakeNote = () => {
     if (selectedSegments.length === 0) return;
+
+    // Capture context so we can return to this exact spot
+    setAnnotationSource({
+      view: 'player',
+      episodeId: viewingEpisode?.id || null,
+      previousAutoScrollEnabled: isAutoScrollEnabled,
+      captureTime: selectedSegments[0].start_time // Return to the start of selection
+    });
+
     navigateToView('annotation');
   };
 
@@ -81,34 +92,8 @@ function PlayerView() {
     // Effect 3 will handle the actual scrolling and programmatic lock
   };
 
-  // Effects
-  // Local state for smooth scrubbing
-  const [isDragging, setIsDragging] = useState(false);
-  const [isSeeking, setIsSeeking] = useState(false); // Debounce 'jump'
-  const [dragValue, setDragValue] = useState(0);
 
-  // Sync dragValue with effective time when not dragging
-  useEffect(() => {
-    if (!isDragging && !isSeeking && viewingEpisode) {
-      const isPlayingCurrent = viewingEpisode.id === playingEpisode?.id;
-      const effectiveTime = isPlayingCurrent ? currentTime : (viewingEpisode.current_position || 0);
-      setDragValue(effectiveTime);
-    }
-  }, [currentTime, isDragging, isSeeking, playingEpisode?.id, viewingEpisode]);
 
-  const handleSeekChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setIsDragging(true);
-    setDragValue(Number(e.target.value));
-  };
-
-  const handleSeekCommit = () => {
-    setIsDragging(false);
-    setIsSeeking(true);
-    handleSeek(dragValue);
-
-    // Optimistic: Hold the value for a bit to allow audio engine to catch up
-    setTimeout(() => setIsSeeking(false), 250);
-  };
 
   // 1. Load Transcript
   useEffect(() => {
@@ -249,19 +234,6 @@ function PlayerView() {
     }
   }, [transcripts]); // Run when transcripts load/change
 
-  // Refactor PlayerView to rely on global state
-  // We remove audioRef, local playback effects, and duplicate logic.
-  // We keep transcription listeners? No, global controller handles progress updates.
-  // But we might want to listen for specific things if needed.
-  // Actually, GlobalAudioController handles 'onProgress' updates to store.
-  // So PlayerView just reads from store.
-
-  // We can remove the auto-save interval as GlobalAudioController handles it.
-
-  // We keep scroll handling for transcript sync.
-
-  // We keep user interactions (click segment, take note).
-
   const loadTranscript = async () => {
     if (!viewingEpisode) return;
     try {
@@ -307,210 +279,228 @@ function PlayerView() {
   }
 
   // Handlers for local controls (proxying to global/store)
-  const handlePlayPause = () => {
-    const { setIsPlaying, isPlaying } = useAppStore.getState();
-    setIsPlaying(!isPlaying);
-  };
 
-  const handleSwitchEpisode = () => {
-    // User wants to play THIS viewing episode
-    setPlayingEpisode(viewingEpisode);
-    useAppStore.getState().setIsPlaying(true);
-  };
 
-  const handleSkip = (seconds: number) => {
-    const { currentTime, setJumpToTime } = useAppStore.getState();
-    const newTime = Math.max(0, Math.min(Number(viewingEpisode.duration) || 0, currentTime + seconds));
-    setJumpToTime(newTime);
-    // Optimistic update? GlobalAudioController handles it.
-  };
+  const viewingPodcast = podcasts.find(p => p.id === viewingEpisode.podcast_id);
 
-  const handleSeek = (time: number) => {
-    useAppStore.getState().setJumpToTime(time);
+  // Format Date
+  const formatDate = (dateString: string) => {
+    try {
+      return new Date(dateString).toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    } catch (e) {
+      return dateString;
+    }
   };
-
-  const handleSpeedChange = (speed: number) => {
-    useAppStore.getState().setPlaybackSpeed(speed);
-  };
-
 
   return (
     <div className="player-view">
-      <div className="player-left">
-        <div className="player-container">
-          {viewingEpisode && viewingEpisode.artwork_url && (
-            <img
-              src={viewingEpisode.artwork_url}
-              alt="Episode artwork"
-              className="player-artwork"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none';
-              }}
-            />
-          )}
-
-          <h2 className="player-episode-title">{viewingEpisode.title}</h2>
-
-          {/* Controls Restored */}
-
-          <div className="playback-controls">
-            {!isCurrentEpisodePlaying ? (
-              <button className="control-button-large play-button" onClick={handleSwitchEpisode}>
-                <Play size={20} fill="currentColor" /> Play This Episode
-              </button>
+      {/* LEFT PANEL - Sticky Info & Controls */}
+      <div className="player-sidebar">
+        <ScrollableContainer className="sidebar-content">
+          {/* Artwork */}
+          <div className="artwork-container-small">
+            {viewingEpisode.artwork_url ? (
+              <img
+                src={viewingEpisode.artwork_url}
+                alt="Episode artwork"
+                className="player-artwork-small"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
             ) : (
-              <>
-                <button className="control-button" onClick={() => handleSkip(-15)}>
-                  <RotateCcw size={24} />
-                </button>
-                <button className="control-button-large" onClick={handlePlayPause}>
-                  {isPlaying ? <Pause size={32} fill="currentColor" /> : <Play size={32} fill="currentColor" />}
-                </button>
-                <button className="control-button" onClick={() => handleSkip(15)}>
-                  <RotateCw size={24} />
-                </button>
-              </>
+              <div className="artwork-placeholder-small" />
             )}
           </div>
 
-          <div className="playback-progress">
-            <span className="time-label">{formatTime(isDragging || isSeeking ? dragValue : (isCurrentEpisodePlaying ? currentTime : (viewingEpisode.current_position || 0)))}</span>
-            <input
-              type="range"
-              min="0"
-              max={viewingEpisode.duration || 100}
-              value={isDragging || isSeeking ? dragValue : (isCurrentEpisodePlaying ? currentTime : (viewingEpisode.current_position || 0))}
-              onChange={handleSeekChange}
-              onMouseUp={handleSeekCommit}
-              onTouchEnd={handleSeekCommit}
-              onKeyDown={(e) => {
-                if (e.key === 'ArrowLeft') {
-                  e.preventDefault();
-                  handleSkip(-15);
-                } else if (e.key === 'ArrowRight') {
-                  e.preventDefault();
-                  handleSkip(15);
-                }
-              }}
-              className="progress-slider"
-              disabled={!isCurrentEpisodePlaying}
-              style={{
-                opacity: isCurrentEpisodePlaying ? 1 : 0.6,
-                cursor: isCurrentEpisodePlaying ? 'pointer' : 'not-allowed',
-                '--progress': `${((isDragging || isSeeking ? dragValue : (isCurrentEpisodePlaying ? currentTime : (viewingEpisode.current_position || 0))) / (viewingEpisode.duration || 1)) * 100}%`
-              } as React.CSSProperties}
-            />
-            <span className="time-label">{formatTime(viewingEpisode.duration)}</span>
-          </div>
+          {/* Header Info */}
+          <div className="episode-info-scroll">
+            <h3 className="podcast-title-small">{viewingPodcast?.title || 'Unknown Podcast'}</h3>
+            <h1 className="episode-title">{viewingEpisode.title}</h1>
+            <div className="episode-meta">
+              <span className="publish-date">{formatDate(viewingEpisode.published_date)}</span>
+              <span className="dot-separator">•</span>
+              <span className="duration-text">{Math.floor((viewingEpisode.duration || 0) / 60)} min</span>
+            </div>
 
-          <div className="playback-speed">
-            <label>Speed:</label>
-            <select
-              value={playbackSpeed}
-              onChange={(e) => handleSpeedChange(Number(e.target.value))}
-              className="speed-select"
+            <div className="divider" />
+
+            {/* Description */}
+            {/* Description */}
+            <div className={`episode-description-full ${isDescriptionExpanded ? 'expanded' : 'clamped'}`}>
+              {viewingEpisode.description.replace(/<[^>]*>?/gm, '')}
+            </div>
+            <button
+              className="read-more-btn"
+              onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
             >
-              <option value="0.5">0.5x</option>
-              <option value="0.75">0.75x</option>
-              <option value="1">1x</option>
-              <option value="1.25">1.25x</option>
-              <option value="1.5">1.5x</option>
-              <option value="1.75">1.75x</option>
-              <option value="2">2x</option>
-            </select>
+              {isDescriptionExpanded ? 'Read Less' : 'Read More'}
+            </button>
           </div>
-        </div>
+        </ScrollableContainer>
       </div>
 
-      <div className="player-right" ref={transcriptContainerRef}>
-        {isCurrentEpisodePlaying && !isAutoScrollEnabled && (
-          <button className="resume-scroll-button" onClick={handleResumeAutoScroll}>
-            <span><ArrowDown size={14} /></span> Enable Auto-Scroll
-          </button>
-        )}
+      {/* RIGHT PANEL - Transcript */}
+      <div className="player-main" ref={transcriptContainerRef}>
 
-        {/* Rendering Overlay */}
+        {/* Unified Floating Action Dock */}
+        <AnimatePresence>
+          {(() => {
+            const showResume = isCurrentEpisodePlaying && !isAutoScrollEnabled;
+            const showToolbar = selectedSegments.length > 0;
+            const mode = showToolbar ? 'toolbar' : (showResume ? 'resume' : null);
+
+            if (!mode) return null;
+
+            return (
+              <motion.div
+                key="dock"
+                className={`floating-action-dock ${mode}`}
+                layout
+                initial={{ opacity: 0, y: 30, scale: 0.9 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 30, scale: 0.9 }}
+                transition={{
+                  type: "spring",
+                  stiffness: 500,
+                  damping: 30,
+                  opacity: { duration: 0.2 }
+                }}
+                onClick={mode === 'resume' ? handleResumeAutoScroll : undefined}
+                style={{ originY: 1 }} // Expand from bottom
+              >
+                <motion.div
+                  key={mode}
+                  initial={{ opacity: 0, scale: 0.9, filter: "blur(4px)" }}
+                  animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+                  exit={{ opacity: 0, scale: 0.9, filter: "blur(4px)" }}
+                  transition={{ duration: 0.2 }}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  {mode === 'resume' ? (
+                    <div className="dock-content-resume">
+                      <ArrowDown size={16} /> <span>Resume Auto-Scroll</span>
+                    </div>
+                  ) : (
+                    <div className="dock-content-toolbar">
+                      <span className="selection-count">{selectedSegments.length} selected</span>
+                      {/* Stop propagation to avoid triggering container onClick (safety) */}
+                      <div
+                        className="toolbar-actions"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <button
+                          className="toolbar-btn secondary"
+                          onClick={clearSelectedSegments}
+                        >
+                          Clear
+                        </button>
+                        <button
+                          className="toolbar-btn primary"
+                          onClick={handleTakeNote}
+                        >
+                          <PenTool size={14} /> Take Note
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </motion.div>
+              </motion.div>
+            );
+          })()}
+        </AnimatePresence>
+
         <div className={`rendering-overlay ${!isRendering ? 'hidden' : ''}`}>
           <div className="transcript-skeleton-list">
-            {Array.from({ length: 20 }).map((_, i) => (
+            {Array.from({ length: 12 }).map((_, i) => (
               <div key={i} className="transcript-skeleton">
                 <div className="skeleton-time"></div>
                 <div className="skeleton-text-group">
                   <div className="skeleton-line" style={{ width: `${Math.random() * 40 + 60}%` }}></div>
                   <div className="skeleton-line" style={{ width: `${Math.random() * 30 + 50}%` }}></div>
-                  {i % 3 === 0 && <div className="skeleton-line" style={{ width: `${Math.random() * 20 + 40}%` }}></div>}
                 </div>
               </div>
             ))}
           </div>
         </div>
 
-        <div
+        <ScrollableContainer
           className="transcript-container"
-          ref={scrollableContainerRef}
+          innerRef={scrollableContainerRef}
         >
           {isTranscribing && transcribingEpisode?.id === viewingEpisode.id ? (
             <div className="transcript-loading">
-              <div className="spinner"></div>
-              <p>Generating transcript...</p>
-              <div className="transcription-progress">
-                <div className="progress-bar-container">
-                  <div className="progress-bar-fill" style={{ width: `${transcriptionProgress}%` }}></div>
+              <div className="loading-spinner-large"></div>
+              <h3>Generating Transcript</h3>
+              <p className="loading-subtext">This might take a moment...</p>
+              <div className="transcription-progress-large">
+                <div className="progress-bar-container-large">
+                  <div className="progress-bar-fill-large" style={{ width: `${transcriptionProgress}%` }}></div>
                 </div>
-                <span>{transcriptionProgress}% - {transcriptionStage}</span>
+                <div className="progress-meta">
+                  <span className="progress-pct">{transcriptionProgress}%</span>
+                  <span className="progress-stage">{transcriptionStage}</span>
+                </div>
               </div>
             </div>
           ) : transcripts.length > 0 ? (
             <>
               <div
                 className="transcript-segments"
-                style={{ opacity: (isTranscriptReady && !isRendering) ? 1 : 0, transition: 'opacity 0.2s ease-in' }}
+                style={{ opacity: (isTranscriptReady && !isRendering) ? 1 : 0 }}
               >
                 {transcripts.map((segment, index) => {
                   const isActive = isCurrentEpisodePlaying && currentTime >= segment.start_time && currentTime <= segment.end_time;
-                  // We need to maintain activeSegmentIndex state derived from currentTime or store?
-                  // Calculated on render is fine.
                   return (
                     <div
                       key={segment.id}
                       className={`transcript-segment ${isActive ? 'active' : ''} ${isSegmentSelected(segment.id) ? 'selected' : ''}`}
                       onClick={(e) => handleSegmentClick(segment, index, e)}
                     >
+                      <div className="segment-marker"></div>
                       <span className="segment-time">{formatTime(segment.start_time)}</span>
-                      <span className="segment-text">{segment.text}</span>
+                      <p className="segment-text">{segment.text}</p>
                     </div>
                   );
                 })}
               </div>
-              {/* Selection Toolbar */}
-              {selectedSegments.length > 0 && (
-                <div className="selection-toolbar">
-                  <span className="selection-count">{selectedSegments.length} selected</span>
-                  <button className="clear-selection-button" onClick={clearSelectedSegments}>Clear</button>
-                  <button className="take-note-button" onClick={handleTakeNote}><PenTool size={14} /> Take Note</button>
-                </div>
-              )}
+
             </>
           ) : (
             <div className="transcript-empty">
-              <div className="transcript-empty-content">
-                <h3>Transcript not available.</h3>
-                <p>A transcript is required to start taking notes.</p>
-                <button className="generate-transcript-button" onClick={startTranscription}>
-                  <Sparkles size={16} /> Generate Transcript
+              <div className="empty-content-card">
+                <Sparkles size={48} className="empty-icon" />
+                <h3>No Transcript Available</h3>
+                <p>Generate a transcript to follow along, search, and take notes.</p>
+                <button className="generate-transcript-button-large" onClick={startTranscription}>
+                  Generate Transcript
                 </button>
               </div>
             </div>
           )}
-        </div>
-      </div>
+        </ScrollableContainer>
+
+
+      </div >
+
       {showSaveToast && (
         <div className="save-toast">
           <div className="save-toast-icon"><Check size={18} /></div>
-          <div className="save-toast-text">Note saved!</div>
+          <div className="save-toast-text">Note saved to notebook!</div>
         </div>
-      )}
-    </div>
+      )
+      }
+    </div >
   );
 }
 

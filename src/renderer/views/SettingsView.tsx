@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import '../styles/SettingsView.css';
+import { ScrollableContainer } from '../components/ScrollableContainer';
 
 function SettingsView() {
   const [localAvailable, setLocalAvailable] = useState(false);
@@ -21,7 +22,7 @@ function SettingsView() {
 
   return (
     <div className="settings-view">
-      <div className="settings-container">
+      <ScrollableContainer className="settings-container">
         <h1 className="settings-title">Settings</h1>
 
         <div className="settings-section">
@@ -89,7 +90,7 @@ function SettingsView() {
             A podcast annotation and streaming app for Linux with local transcription.
           </p>
         </div>
-      </div>
+      </ScrollableContainer>
     </div>
   );
 }

@@ -22,7 +22,7 @@ function App() {
     currentState,
     setPodcasts,
     navigateToView,
-    viewingEpisode,
+
     playingEpisode
   } = useAppStore();
   const [isInitializing, setIsInitializing] = useState(true);
@@ -119,8 +119,8 @@ function App() {
   };
 
   // Show player bar if we have a playing episode.
-  // Hide it if we are on the Player View for the SAME episode.
-  const hasPlayerBar = !!playingEpisode && !(currentState === 'player' && viewingEpisode?.id === playingEpisode.id);
+  // We now keep it visible even in Player View (it transforms).
+  const hasPlayerBar = !!playingEpisode;
 
   return (
     <div className={`app ${hasPlayerBar ? 'has-player-bar' : ''}`}>

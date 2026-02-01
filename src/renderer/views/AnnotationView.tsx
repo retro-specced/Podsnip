@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAppStore } from '../store/appStore';
 import '../styles/AnnotationView.css';
+import { ScrollableContainer } from '../components/ScrollableContainer';
 
 function AnnotationView() {
   const {
@@ -30,18 +31,18 @@ function AnnotationView() {
     // If we have a source, use it to determine behavior
     if (annotationSource?.view === 'player') {
       if (saved) {
-        // Rule 6: Synced up, Auto-scroll ON, Clear selection
-        setIsAutoScrollEnabled(true);
+        // Rule 6: Fix - Keep user at annotation location instead of jumping to playback
+        setIsAutoScrollEnabled(false);
+        setPendingScrollTarget(startTime);
         clearSelectedSegments();
       } else {
-        // Rule 5: Paused, Scrolled to capture time, Keep selection
+        // Rule 5: Paused, Scrolled to capture time, Keep selection (or restore)
         setIsAutoScrollEnabled(false);
         setPendingScrollTarget(annotationSource.captureTime);
-        // Do NOT clear selected segments
+        // Do NOT clear selected segments on cancel, so user can edit selection
       }
     } else {
       // Source was something else (e.g. Browsing) -> Just go back
-      // Rule 3 & 4 Restored logic
       clearSelectedSegments();
     }
 
@@ -103,7 +104,7 @@ function AnnotationView() {
           </button>
         </div>
 
-        <div className="annotation-body">
+        <ScrollableContainer className="annotation-body">
           <div className="selected-segment">
             <div className="segment-timestamp">
               {formatTime(startTime)} - {formatTime(endTime)}
@@ -146,7 +147,7 @@ function AnnotationView() {
               </button>
             </div>
           </div>
-        </div>
+        </ScrollableContainer>
       </div>
     </div>
   );

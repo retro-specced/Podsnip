@@ -10,9 +10,13 @@ interface PersistentPlayerBarProps {
 export default function PersistentPlayerBar({ visible }: PersistentPlayerBarProps) {
     const {
         playingEpisode, // Changed from currentEpisode
-        // currentPodcast removed as unused
+        viewingEpisode, // Added back for comparison
+        currentState, // Added back for comparison
+
 
         isPlaying,
+
+
         currentTime,
         playbackSpeed,
         setIsPlaying,
@@ -113,7 +117,7 @@ export default function PersistentPlayerBar({ visible }: PersistentPlayerBarProp
             transcripts: storeTranscripts,
             setAnnotationSource,
             setSelectedSegments,
-            setTranscripts // We update store if we fetch new ones
+
         } = useAppStore.getState();
 
         // 1. Capture Source (Do this early)
@@ -274,9 +278,14 @@ export default function PersistentPlayerBar({ visible }: PersistentPlayerBarProp
             <div className="player-bar-right">
                 <div className="dynamic-actions">
                     {hasTranscript ? (
-                        <button className="action-btn note-btn" onClick={handleTakeNote}>
-                            <PenTool size={14} /> Take Note
-                        </button>
+                        // Hide if we are essentially in the "Full Player View" of this episode
+                        // Because PlayerView already exposes annotation/creation tools locally if designed,
+                        // or at least avoids redundancy if the user is focused on the content.
+                        (currentState === 'player' && viewingEpisode?.id === playingEpisode.id) ? null : (
+                            <button className="action-btn note-btn" onClick={handleTakeNote}>
+                                <PenTool size={14} /> Take Note
+                            </button>
+                        )
                     ) : isTranscribingThis ? (
                         <div className="action-status">
                             <div className="spinner-tiny"></div>
