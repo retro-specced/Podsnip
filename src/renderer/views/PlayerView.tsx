@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../store/appStore';
 import { Transcript } from '../../shared/types';
-import { ArrowDown, PenTool, Sparkles, Check } from 'lucide-react';
+import { ArrowDown, PenTool, Sparkles, Check, Play } from 'lucide-react';
 import { ScrollableContainer } from '../components/ScrollableContainer';
 import '../styles/PlayerView.css';
 
@@ -32,7 +32,10 @@ function PlayerView() {
     transcribingEpisode, // Added to check for active transcription
     navigateToView, // Added for navigation
     podcasts, // Added to get podcast title
-    setAnnotationSource // Added to manage return context
+    setAnnotationSource, // Added to manage return context
+    setPlayingEpisode,
+    setIsPlaying,
+    isPlaying
   } = useAppStore();
 
   const transcriptContainerRef = useRef<HTMLDivElement>(null);
@@ -304,14 +307,31 @@ function PlayerView() {
           {/* Artwork */}
           <div className="artwork-container-small">
             {viewingEpisode.artwork_url ? (
-              <img
-                src={viewingEpisode.artwork_url}
-                alt="Episode artwork"
-                className="player-artwork-small"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none';
+              <div
+                className={`artwork-wrapper ${(isCurrentEpisodePlaying && isPlaying) ? 'playing' : ''}`}
+                onClick={() => {
+                  if (!isCurrentEpisodePlaying || !isPlaying) {
+                    setPlayingEpisode(viewingEpisode);
+                    setIsPlaying(true);
+                  }
                 }}
-              />
+              >
+                <img
+                  src={viewingEpisode.artwork_url}
+                  alt="Episode artwork"
+                  className={`player-artwork-small ${(!isCurrentEpisodePlaying || !isPlaying) ? 'blurred' : ''}`}
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+                {(!isCurrentEpisodePlaying || !isPlaying) && (
+                  <div className="artwork-play-overlay visible">
+                    <div className="artwork-play-button-icon">
+                      <Play size={24} fill="currentColor" className="ml-1" />
+                    </div>
+                  </div>
+                )}
+              </div>
             ) : (
               <div className="artwork-placeholder-small" />
             )}
@@ -481,7 +501,7 @@ function PlayerView() {
               <div className="empty-content-card">
                 <Sparkles size={48} className="empty-icon" />
                 <h3>No Transcript Available</h3>
-                <p>Generate a transcript to follow along, search, and take notes.</p>
+                <p>Generate a transcript to follow along and take notes.</p>
                 <button className="generate-transcript-button-large" onClick={startTranscription}>
                   Generate Transcript
                 </button>

@@ -69,11 +69,16 @@ export const ScrollableContainer: React.FC<ScrollableContainerProps> = ({
     };
 
     // Scrollbar Fade Logic
+    const isHovering = useRef(false);
+
     useEffect(() => {
         const container = scrollRef.current;
         if (!container) return;
 
         const showScrollbar = () => {
+            // Only show if hovering or dragging
+            if (!isHovering.current && !isScrollbarDragging) return;
+
             setIsScrollbarVisible(true);
             updateScrollbar();
 
@@ -87,20 +92,42 @@ export const ScrollableContainer: React.FC<ScrollableContainerProps> = ({
             }
         };
 
-        const handleScrollEvent = (e: Event) => {
-            // We also trigger onScroll prop if manual listener used (but React attach handles that separately)
+        const handleMouseEnter = () => {
+            isHovering.current = true;
+            showScrollbar();
+        };
+
+        const handleMouseLeave = () => {
+            isHovering.current = false;
+            // Optional: Hide immediately or let it fade? 
+            // "Only needs to appear when mouse is over" -> Hide seems appropriate, 
+            // but let's clear the visible state gracefully or via timeout? 
+            // Standard UX usually hides or fades out.
+            // Let's hide after a short delay or immediately if desired.
+            // The existing timeout logic runs in showScrollbar.
+            // But if we leave, we might want to force hide?
+            // Let's stick to the timeout for smoothness, but we won't re-trigger it.
+            if (!isScrollbarDragging) {
+                // Determine if we should hide immediately on leave? 
+                // User said "Only needs to appear when mouse is over". 
+                // Immediate hide might be too abrupt. 
+                // But let's rely on showScrollbar checks preventing re-show.
+            }
+        };
+
+        const handleScrollEvent = () => {
             updateScrollbar();
             showScrollbar();
         };
 
-        // Show initially
-        updateScrollbar();
-        showScrollbar();
+        // Show initially ? No, only if hovering.
+        // updateScrollbar(); // Just position it
+        // showScrollbar(); // Don't force show initially
 
-        // Native event listeners for behavior
         container.addEventListener('scroll', handleScrollEvent);
-        container.addEventListener('mouseenter', showScrollbar);
-        container.addEventListener('mousemove', showScrollbar);
+        container.addEventListener('mouseenter', handleMouseEnter);
+        container.addEventListener('mousemove', showScrollbar); // Refresh fade timer on move
+        container.addEventListener('mouseleave', handleMouseLeave);
 
         const observer = new ResizeObserver(() => {
             updateScrollbar();
@@ -109,8 +136,9 @@ export const ScrollableContainer: React.FC<ScrollableContainerProps> = ({
 
         return () => {
             container.removeEventListener('scroll', handleScrollEvent);
-            container.removeEventListener('mouseenter', showScrollbar);
+            container.removeEventListener('mouseenter', handleMouseEnter);
             container.removeEventListener('mousemove', showScrollbar);
+            container.removeEventListener('mouseleave', handleMouseLeave);
             observer.disconnect();
             if (scrollbarTimeoutRef.current) clearTimeout(scrollbarTimeoutRef.current);
         };
