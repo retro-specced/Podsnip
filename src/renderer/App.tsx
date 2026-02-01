@@ -61,6 +61,25 @@ function App() {
     }
   };
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Tab') {
+        document.body.classList.add('using-keyboard');
+      }
+    };
+    const handleMouseDown = () => {
+      document.body.classList.remove('using-keyboard');
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('mousedown', handleMouseDown);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('mousedown', handleMouseDown);
+    };
+  }, []);
+
   const triggerAutoRefresh = async () => {
     try {
       await window.api.podcast.refreshAll();

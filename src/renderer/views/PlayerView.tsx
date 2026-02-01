@@ -82,6 +82,34 @@ function PlayerView() {
   };
 
   // Effects
+  // Local state for smooth scrubbing
+  const [isDragging, setIsDragging] = useState(false);
+  const [isSeeking, setIsSeeking] = useState(false); // Debounce 'jump'
+  const [dragValue, setDragValue] = useState(0);
+
+  // Sync dragValue with effective time when not dragging
+  useEffect(() => {
+    if (!isDragging && !isSeeking && viewingEpisode) {
+      const isPlayingCurrent = viewingEpisode.id === playingEpisode?.id;
+      const effectiveTime = isPlayingCurrent ? currentTime : (viewingEpisode.current_position || 0);
+      setDragValue(effectiveTime);
+    }
+  }, [currentTime, isDragging, isSeeking, playingEpisode?.id, viewingEpisode]);
+
+  const handleSeekChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setIsDragging(true);
+    setDragValue(Number(e.target.value));
+  };
+
+  const handleSeekCommit = () => {
+    setIsDragging(false);
+    setIsSeeking(true);
+    handleSeek(dragValue);
+
+    // Optimistic: Hold the value for a bit to allow audio engine to catch up
+    setTimeout(() => setIsSeeking(false), 250);
+  };
+
   // 1. Load Transcript
   useEffect(() => {
     if (viewingEpisode) {
@@ -346,16 +374,31 @@ function PlayerView() {
           </div>
 
           <div className="playback-progress">
-            <span className="time-label">{formatTime(isCurrentEpisodePlaying ? currentTime : (viewingEpisode.current_position || 0))}</span>
+            <span className="time-label">{formatTime(isDragging || isSeeking ? dragValue : (isCurrentEpisodePlaying ? currentTime : (viewingEpisode.current_position || 0)))}</span>
             <input
               type="range"
               min="0"
               max={viewingEpisode.duration || 100}
-              value={isCurrentEpisodePlaying ? currentTime : (viewingEpisode.current_position || 0)}
-              onChange={(e) => handleSeek(Number(e.target.value))}
+              value={isDragging || isSeeking ? dragValue : (isCurrentEpisodePlaying ? currentTime : (viewingEpisode.current_position || 0))}
+              onChange={handleSeekChange}
+              onMouseUp={handleSeekCommit}
+              onTouchEnd={handleSeekCommit}
+              onKeyDown={(e) => {
+                if (e.key === 'ArrowLeft') {
+                  e.preventDefault();
+                  handleSkip(-15);
+                } else if (e.key === 'ArrowRight') {
+                  e.preventDefault();
+                  handleSkip(15);
+                }
+              }}
               className="progress-slider"
               disabled={!isCurrentEpisodePlaying}
-              style={{ opacity: isCurrentEpisodePlaying ? 1 : 0.6, cursor: isCurrentEpisodePlaying ? 'pointer' : 'not-allowed' }}
+              style={{
+                opacity: isCurrentEpisodePlaying ? 1 : 0.6,
+                cursor: isCurrentEpisodePlaying ? 'pointer' : 'not-allowed',
+                '--progress': `${((isDragging || isSeeking ? dragValue : (isCurrentEpisodePlaying ? currentTime : (viewingEpisode.current_position || 0))) / (viewingEpisode.duration || 1)) * 100}%`
+              } as React.CSSProperties}
             />
             <span className="time-label">{formatTime(viewingEpisode.duration)}</span>
           </div>

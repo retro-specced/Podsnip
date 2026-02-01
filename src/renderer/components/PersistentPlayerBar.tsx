@@ -19,10 +19,39 @@ export default function PersistentPlayerBar({ visible }: PersistentPlayerBarProp
         setJumpToTime,
         setPlaybackSpeed,
         // To navigate
+    } = useAppStore();
 
-        // Transcription
-        // transcripts removed as unused (checking API instead)
+    /* Local state for smooth scrubbing */
+    const [isDragging, setIsDragging] = useState(false);
+    const [isSeeking, setIsSeeking] = useState(false); // Debounce 'jump'
+    const [dragValue, setDragValue] = useState(0);
 
+    // Sync dragValue with currentTime when not dragging
+    useEffect(() => {
+        if (!isDragging && !isSeeking) {
+            setDragValue(currentTime);
+        }
+    }, [currentTime, isDragging, isSeeking]);
+
+    const handleSeekChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setIsDragging(true);
+        setDragValue(Number(e.target.value));
+    };
+
+    const handleSeekCommit = () => {
+        setIsDragging(false);
+        setIsSeeking(true);
+        setJumpToTime(dragValue);
+
+        // Optimistic: Hold the value for a bit to allow audio engine to catch up
+        setTimeout(() => setIsSeeking(false), 250);
+    };
+
+
+    // Transcription
+    // transcripts removed as unused (checking API instead)
+
+    const {
         setIsAutoScrollEnabled,
 
         transcribingEpisode,
@@ -65,11 +94,6 @@ export default function PersistentPlayerBar({ visible }: PersistentPlayerBarProp
 
     const handleSkip = (seconds: number) => {
         const newTime = Math.max(0, Math.min(playingEpisode.duration, currentTime + seconds));
-        setJumpToTime(newTime);
-    };
-
-    const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const newTime = Number(e.target.value);
         setJumpToTime(newTime);
     };
 
@@ -219,14 +243,28 @@ export default function PersistentPlayerBar({ visible }: PersistentPlayerBarProp
                 </div>
 
                 <div className="player-bar-progress">
-                    <span className="time-text">{formatTime(currentTime)}</span>
+                    <span className="time-text">{formatTime(isDragging || isSeeking ? dragValue : currentTime)}</span>
                     <input
                         type="range"
+                        min="0"
+                        max={playingEpisode?.duration || 100}
+                        value={isDragging || isSeeking ? dragValue : currentTime}
+                        onChange={handleSeekChange}
+                        onMouseUp={handleSeekCommit}
+                        onTouchEnd={handleSeekCommit}
+                        onKeyDown={(e) => {
+                            if (e.key === 'ArrowLeft') {
+                                e.preventDefault();
+                                handleSkip(-15);
+                            } else if (e.key === 'ArrowRight') {
+                                e.preventDefault();
+                                handleSkip(15);
+                            }
+                        }}
                         className="progress-slider-bar"
-                        min={0}
-                        max={playingEpisode.duration || 100}
-                        value={currentTime}
-                        onChange={handleSeek}
+                        style={{
+                            '--progress': `${((isDragging || isSeeking ? dragValue : currentTime) / (playingEpisode?.duration || 1)) * 100}%`
+                        } as React.CSSProperties}
                     />
                     <span className="time-text">{formatTime(playingEpisode.duration)}</span>
                 </div>

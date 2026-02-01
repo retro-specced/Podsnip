@@ -4,6 +4,11 @@
   box-sizing: border-box;
 }
 
+*:focus {
+  outline: none !important;
+  /* Force disable default outlines */
+}
+
 :root {
   /* OLED Dark Mode Palette - Refined */
   --primary-color: #3B82F6;
@@ -145,8 +150,20 @@ input:focus,
 textarea:focus,
 select:focus {
   outline: none;
+  /* Only show border color if typing or explicitly focused */
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.2);
+}
+
+/* Only show focus ring if using keyboard */
+body.using-keyboard input:focus,
+body.using-keyboard textarea:focus,
+body.using-keyboard select:focus,
+body.using-keyboard button:focus,
+body.using-keyboard a:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+  /* Stronger indicator for a11y */
 }
 
 a {
