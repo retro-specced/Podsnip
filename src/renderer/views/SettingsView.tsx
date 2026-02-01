@@ -45,6 +45,44 @@ function SettingsView() {
         </div>
 
         <div className="settings-section">
+          <h2 className="section-title">Keyboard Shortcuts</h2>
+          <table className="shortcuts-table">
+            <thead>
+              <tr>
+                <th>Key</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><kbd>Space</kbd></td>
+                <td>Play / Pause</td>
+              </tr>
+              <tr>
+                <td><kbd>←</kbd></td>
+                <td>Rewind 15s</td>
+              </tr>
+              <tr>
+                <td><kbd>→</kbd></td>
+                <td>Forward 15s</td>
+              </tr>
+              <tr>
+                <td><kbd>s</kbd></td>
+                <td>Cycle Speed (0.5x, 1x, 1.5x, 2x)</td>
+              </tr>
+              <tr>
+                <td><kbd>n</kbd></td>
+                <td>Take Note</td>
+              </tr>
+              <tr>
+                <td><kbd>w</kbd></td>
+                <td>Open Fullscreen Player</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div className="settings-section">
           <h2 className="section-title">About</h2>
           <p className="section-description">Podsnip v0.1.0</p>
           <p className="section-description">

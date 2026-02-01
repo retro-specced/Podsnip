@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useAppStore } from '../store/appStore';
 import { Transcript } from '../../shared/types';
-import { Play, Pause, RotateCcw, RotateCw, PenTool, ArrowDown, Check } from 'lucide-react';
+import { Play, Pause, RotateCcw, RotateCw, PenTool, ArrowDown, Check, Sparkles } from 'lucide-react';
 import '../styles/PlayerView.css';
 
 function PlayerView() {
@@ -36,12 +36,14 @@ function PlayerView() {
 
   const transcriptContainerRef = useRef<HTMLDivElement>(null);
   const scrollableContainerRef = useRef<HTMLDivElement>(null);
-  const [activeSegmentIndex, setActiveSegmentIndex] = useState(0);
+  // const [activeSegmentIndex, setActiveSegmentIndex] = useState(0); // REMOVED: Derived state used instead
   // const [isAutoScrollPaused, setIsAutoScrollPaused] = useState(false); // Replaced by global state
   const isProgrammaticScrollRef = useRef(false);
   const lastClickedIndexRef = useRef<number | null>(null);
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const allowInstantScrollRef = useRef(true);
+  const [isTranscriptReady, setIsTranscriptReady] = useState(false);
+  const [isRendering, setIsRendering] = useState(true);
 
   // Helper functions
   const formatTime = (seconds: number) => {
@@ -76,16 +78,7 @@ function PlayerView() {
 
   const handleResumeAutoScroll = () => {
     setIsAutoScrollEnabled(true);
-    isProgrammaticScrollRef.current = true;
-    const activeElement = document.querySelector('.transcript-segment.active');
-    if (activeElement) {
-      activeElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-
-    if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
-    scrollTimeoutRef.current = setTimeout(() => {
-      isProgrammaticScrollRef.current = false;
-    }, 1000);
+    // Effect 3 will handle the actual scrolling and programmatic lock
   };
 
   // Effects
@@ -98,35 +91,65 @@ function PlayerView() {
 
   const isCurrentEpisodePlaying = viewingEpisode?.id === playingEpisode?.id;
 
-  // 2. Identify active segment (ONLY if playing this episode)
-  useEffect(() => {
-    if (!isCurrentEpisodePlaying) return;
-
-    const activeIndex = transcripts.findIndex(
+  // 2. Derive active segment index directly (no effect delay)
+  // This ensures the render pass knows EXACTLY which segment is active before paint.
+  const activeSegmentIndex = isCurrentEpisodePlaying
+    ? transcripts.findIndex(
       (segment) => currentTime >= segment.start_time && currentTime <= segment.end_time
-    );
-    if (activeIndex !== -1) {
-      setActiveSegmentIndex(activeIndex);
-    }
-  }, [currentTime, transcripts, isCurrentEpisodePlaying]);
+    )
+    : -1;
 
   // 3. Auto-scroll (ONLY if playing this episode)
-  useEffect(() => {
+  // useLayoutEffect ensures scrolling happens BEFORE the browser paints the screen.
+  // This eliminates the visual "jump" from top to current position.
+  useLayoutEffect(() => {
     if (!isAutoScrollEnabled || !isCurrentEpisodePlaying) return;
+
+    // We target the active segment directly. 
+    // Since activeSegmentIndex is derived above, the DOM will have the 'active' class 
+    // in the same commit phase as this effect runs.
     const activeElement = document.querySelector('.transcript-segment.active');
+
     if (activeElement && scrollableContainerRef.current) {
       isProgrammaticScrollRef.current = true;
 
-      // Use 'auto' (instant) if within the initial mount window, otherwise 'smooth'
+      // Use 'auto' (instant) if it's the first scroll, otherwise 'smooth'
       const behavior = allowInstantScrollRef.current ? 'auto' : 'smooth';
       activeElement.scrollIntoView({ behavior, block: 'center' });
+
+      // Consume the instant scroll token logic
+      if (allowInstantScrollRef.current) {
+        allowInstantScrollRef.current = false;
+      }
 
       if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
       scrollTimeoutRef.current = setTimeout(() => {
         isProgrammaticScrollRef.current = false;
       }, 1000);
+
+      // Reveal the transcript after the first scroll command
+      requestAnimationFrame(() => {
+        setIsTranscriptReady(true);
+      });
+    } else if (activeSegmentIndex === -1 && transcripts.length > 0) {
+      // If we have transcripts but no active segment (e.g. paused at start), show it anyway
+      setIsTranscriptReady(true);
     }
-  }, [activeSegmentIndex, isAutoScrollEnabled, isCurrentEpisodePlaying]);
+  }, [activeSegmentIndex, isAutoScrollEnabled, isCurrentEpisodePlaying]); // activeSegmentIndex is now a dependency to trigger scroll when it changes
+
+  // Reset allowInstantScrollRef when viewingEpisode changes
+  // This ensures that if we switch episodes, we get a fresh "instant scroll" to the new position
+  useEffect(() => {
+    allowInstantScrollRef.current = true;
+    setIsTranscriptReady(false);
+    setIsRendering(true);
+
+    // Force 1.5s rendering state
+    const timer = setTimeout(() => {
+      setIsRendering(false);
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [viewingEpisode?.id]);
 
   // 4. Handle user scroll to pause auto-scroll
   useEffect(() => {
@@ -137,8 +160,25 @@ function PlayerView() {
       if (isAutoScrollEnabled) setIsAutoScrollEnabled(false);
     };
     container.addEventListener('scroll', handleScroll);
-    return () => container.removeEventListener('scroll', handleScroll);
+    return () => container?.removeEventListener('scroll', handleScroll);
   }, [isAutoScrollEnabled]);
+
+  // Ensure transcript is revealed if we are not auto-scrolling (e.g. user manually navigated here without auto-scroll, though usually we enable it)
+  // Or if we are just "viewing" and paused? 
+  // Actually, if auto-scroll is disabled, we might still want to see the transcript.
+  // But strictly for the "Jump" case, we handle it in Effect 7.
+  // For the case where user just switches to an episode and it's PAUSED:
+  // Active segment index might be -1 or valid.
+  // If valid, Effect 3 runs (if auto-scroll enabled).
+  // If auto-scroll is disabled by default? (Store initializes to true).
+  // If user disabled it?
+  // We should fallback to revealing it after a safety timeout if it hasn't been revealed?
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsTranscriptReady(true);
+    }, 500); // Failsafe reveal
+    return () => clearTimeout(timer);
+  }, [viewingEpisode?.id]);
 
   // 5. Auto-dismiss toast
   useEffect(() => {
@@ -148,29 +188,38 @@ function PlayerView() {
     }
   }, [showSaveToast]);
 
-  // 6. Disable instant scroll window after mount
+  // 7. Handle Pending Scroll Target (Jump navigation)
   useEffect(() => {
-    const timer = setTimeout(() => {
-      allowInstantScrollRef.current = false;
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, []);
+    // If we have a pending target and transcripts are loaded
+    const { pendingScrollTarget, setPendingScrollTarget } = useAppStore.getState();
 
-  // 7. Initial Scroll / Sync
-  useEffect(() => {
-    if (!isCurrentEpisodePlaying) return;
-    if (isAutoScrollEnabled) return;
+    if (pendingScrollTarget !== null && transcripts.length > 0) {
+      // Find the segment for the target time
+      const targetSegment = transcripts.find(t =>
+        pendingScrollTarget >= t.start_time && pendingScrollTarget <= t.end_time
+      );
 
-    // Small delay to ensure DOM is ready
-    const timer = setTimeout(() => {
-      const activeElement = document.querySelector('.transcript-segment.active');
-      if (activeElement) {
-        const behavior = allowInstantScrollRef.current ? 'auto' : 'smooth';
-        activeElement.scrollIntoView({ behavior, block: 'center' });
+      if (targetSegment) {
+        // Disable auto-scroll so we stick to this location
+        setIsAutoScrollEnabled(false);
+
+        // Use instant scroll behavior
+        // We'll use a small timeout to let the list render if needed, or LayoutEffect handles it?
+        // Let's force it manually here since it's a specific action.
+        setTimeout(() => {
+          const element = document.querySelectorAll('.transcript-segment')[transcripts.indexOf(targetSegment)];
+          if (element) {
+            element.scrollIntoView({ behavior: 'auto', block: 'center' });
+            // Reveal after jump
+            requestAnimationFrame(() => setIsTranscriptReady(true));
+          }
+        }, 50);
+
+        // Clear the pending target so we don't jump again
+        setPendingScrollTarget(null);
       }
-    }, 100);
-    return () => clearTimeout(timer);
-  }, [isCurrentEpisodePlaying]);
+    }
+  }, [transcripts]); // Run when transcripts load/change
 
   // Refactor PlayerView to rely on global state
   // We remove audioRef, local playback effects, and duplicate logic.
@@ -337,7 +386,26 @@ function PlayerView() {
           </button>
         )}
 
-        <div className="transcript-container" ref={scrollableContainerRef}>
+        {/* Rendering Overlay */}
+        <div className={`rendering-overlay ${!isRendering ? 'hidden' : ''}`}>
+          <div className="transcript-skeleton-list">
+            {Array.from({ length: 20 }).map((_, i) => (
+              <div key={i} className="transcript-skeleton">
+                <div className="skeleton-time"></div>
+                <div className="skeleton-text-group">
+                  <div className="skeleton-line" style={{ width: `${Math.random() * 40 + 60}%` }}></div>
+                  <div className="skeleton-line" style={{ width: `${Math.random() * 30 + 50}%` }}></div>
+                  {i % 3 === 0 && <div className="skeleton-line" style={{ width: `${Math.random() * 20 + 40}%` }}></div>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div
+          className="transcript-container"
+          ref={scrollableContainerRef}
+        >
           {isTranscribing && transcribingEpisode?.id === viewingEpisode.id ? (
             <div className="transcript-loading">
               <div className="spinner"></div>
@@ -351,7 +419,10 @@ function PlayerView() {
             </div>
           ) : transcripts.length > 0 ? (
             <>
-              <div className="transcript-segments">
+              <div
+                className="transcript-segments"
+                style={{ opacity: (isTranscriptReady && !isRendering) ? 1 : 0, transition: 'opacity 0.2s ease-in' }}
+              >
                 {transcripts.map((segment, index) => {
                   const isActive = isCurrentEpisodePlaying && currentTime >= segment.start_time && currentTime <= segment.end_time;
                   // We need to maintain activeSegmentIndex state derived from currentTime or store?
@@ -379,8 +450,13 @@ function PlayerView() {
             </>
           ) : (
             <div className="transcript-empty">
-              <p>No transcript available.</p>
-              <button className="generate-transcript-button" onClick={startTranscription}>Generate Transcript</button>
+              <div className="transcript-empty-content">
+                <h3>Transcript not available.</h3>
+                <p>A transcript is required to start taking notes.</p>
+                <button className="generate-transcript-button" onClick={startTranscription}>
+                  <Sparkles size={16} /> Generate Transcript
+                </button>
+              </div>
             </div>
           )}
         </div>

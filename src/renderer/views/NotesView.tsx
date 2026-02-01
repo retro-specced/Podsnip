@@ -38,6 +38,10 @@ function NotesView() {
     notesViewMode,
     notesSelectedPodcastId,
     restoredScrollPosition,
+    // Actions for Jump
+    setIsAutoScrollEnabled,
+    setSelectedSegments,
+    setPendingScrollTarget,
     // We don't need setters, we navigate
     updateCurrentSnapshot
   } = useAppStore();
@@ -245,8 +249,37 @@ function NotesView() {
       // Set the playing episode to actually start audio
       setPlayingEpisode(episode);
 
-      // Set the jump time
+      // Set the jump time (for audio playback)
       setJumpToTime(annotation.start_time);
+
+      // Rule: Auto-scroll PAUSED, Highlight Segments
+      setIsAutoScrollEnabled(false);
+      setPendingScrollTarget(annotation.start_time);
+
+      // Construct a temporary segment for highlighting
+      // (The ID doesn't strictly matter for display highlighting unless we match against loaded transcripts)
+      // Actually, PlayerView highlights based on ID match in `isSegmentSelected`.
+      // If the ID is -1, it won't match the loaded transcript list IDs.
+      // BUT, `AnnotationView` simply DISPLAYS `selectedSegments`.
+      // PlayerView displays `selectedSegments` in the toolbar/overlay?
+      // No, PlayerView adds `.selected` class to segments in the list using `isSegmentSelected`.
+      // If we want the segment in the list to be highlighted, we must match the ID.
+      // We don't have the ID here reliably (annotations table might not store segment ID).
+      // `EnrichedAnnotation` has `transcript_text` but maybe not `transcript_id`?
+      // Wait, `AnnotationView.tsx` creates annotation with `transcriptId: primaryTranscriptId`.
+      // `Annotation` type has `transcript_id`.
+      // So `EnrichedAnnotation` should inherit it.
+      // Let's modify the type locally or cast if needed. 
+      // Assuming `annotation.transcript_id` exists (it should).
+      const transcriptId = (annotation as any).transcript_id || -1;
+
+      setSelectedSegments([{
+        id: transcriptId,
+        episode_id: annotation.episode_id,
+        start_time: annotation.start_time,
+        end_time: annotation.end_time,
+        text: annotation.transcript_text
+      }]);
 
       // Capture scroll before navigating away
       if (scrollContainerRef.current) {

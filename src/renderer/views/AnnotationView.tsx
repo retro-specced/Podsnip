@@ -3,18 +3,20 @@ import { useAppStore } from '../store/appStore';
 import '../styles/AnnotationView.css';
 
 function AnnotationView() {
-  const { selectedSegments, clearSelectedSegments, setCurrentState, setError, setShowSaveToast } = useAppStore();
+  const {
+    selectedSegments,
+    clearSelectedSegments,
+    setError,
+    setShowSaveToast,
+    annotationSource,
+    setPendingScrollTarget,
+    setIsAutoScrollEnabled,
+    navigateBack,
+    setAnnotationSource
+  } = useAppStore();
   const [noteText, setNoteText] = useState('');
   const [tags, setTags] = useState('');
   const [isSaving, setIsSaving] = useState(false);
-
-  if (selectedSegments.length === 0) {
-    return (
-      <div className="annotation-view">
-        <div className="empty-state">No transcript segments selected</div>
-      </div>
-    );
-  }
 
   // Combine selected segments for display
   const combinedText = selectedSegments.map(s => s.text).join(' ');
@@ -22,6 +24,31 @@ function AnnotationView() {
   const endTime = selectedSegments[selectedSegments.length - 1].end_time;
   // Use the first segment's ID for the annotation
   const primaryTranscriptId = selectedSegments[0].id;
+
+  // Helper to handle navigation logic on exit
+  const handleExit = (saved: boolean) => {
+    // If we have a source, use it to determine behavior
+    if (annotationSource?.view === 'player') {
+      if (saved) {
+        // Rule 6: Synced up, Auto-scroll ON, Clear selection
+        setIsAutoScrollEnabled(true);
+        clearSelectedSegments();
+      } else {
+        // Rule 5: Paused, Scrolled to capture time, Keep selection
+        setIsAutoScrollEnabled(false);
+        setPendingScrollTarget(annotationSource.captureTime);
+        // Do NOT clear selected segments
+      }
+    } else {
+      // Source was something else (e.g. Browsing) -> Just go back
+      // Rule 3 & 4 Restored logic
+      clearSelectedSegments();
+    }
+
+    // Clear source context
+    setAnnotationSource(null);
+    navigateBack();
+  };
 
   const handleSave = async () => {
     if (!noteText.trim()) {
@@ -47,10 +74,8 @@ function AnnotationView() {
         tags: tagArray.length > 0 ? tagArray : undefined,
       });
 
-      // Show confirmation toast, clear selection and return to player view
       setShowSaveToast(true);
-      clearSelectedSegments();
-      setCurrentState('player');
+      handleExit(true); // SAVED = true
     } catch (error) {
       setError('Failed to save annotation');
     } finally {
@@ -59,7 +84,7 @@ function AnnotationView() {
   };
 
   const handleCancel = () => {
-    setCurrentState('player');
+    handleExit(false); // SAVED = false
   };
 
   const formatTime = (seconds: number) => {

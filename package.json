@@ -3,7 +3,10 @@
   "version": "0.1.0",
   "description": "Podcast annotation and streaming app for Linux",
   "main": "dist/main/main.js",
-  "author": "Gerald",
+  "author": {
+    "name": "Gerald",
+    "email": "gerald@podsnip.com"
+  },
   "license": "MIT",
   "scripts": {
     "start": "electron .",
@@ -51,8 +54,7 @@
     },
     "linux": {
       "target": [
-        "rpm",
-        "deb"
+        "AppImage"
       ],
       "category": "AudioVideo"
     }

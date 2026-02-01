@@ -3,7 +3,11 @@ import { useAppStore } from '../store/appStore';
 import '../styles/PersistentPlayerBar.css';
 import { Play, Pause, RotateCcw, RotateCw, PenTool, Sparkles } from 'lucide-react';
 
-export default function PersistentPlayerBar() {
+interface PersistentPlayerBarProps {
+    visible: boolean;
+}
+
+export default function PersistentPlayerBar({ visible }: PersistentPlayerBarProps) {
     const {
         playingEpisode, // Changed from currentEpisode
         // currentPodcast removed as unused
@@ -14,8 +18,7 @@ export default function PersistentPlayerBar() {
         setIsPlaying,
         setJumpToTime,
         setPlaybackSpeed,
-        setCurrentState,
-        setViewingEpisode, // To navigate
+        // To navigate
 
         // Transcription
         // transcripts removed as unused (checking API instead)
@@ -78,10 +81,70 @@ export default function PersistentPlayerBar() {
         return `${mins}:${secs.toString().padStart(2, '0')}`;
     };
 
-    const handleTakeNote = () => {
-        setIsAutoScrollEnabled(false);
-        // Correctly use navigateToView
-        navigateToView('player', { episodeId: playingEpisode.id });
+    const handleTakeNote = async () => {
+        const {
+            currentState,
+            isAutoScrollEnabled,
+            currentTime,
+            transcripts: storeTranscripts,
+            setAnnotationSource,
+            setSelectedSegments,
+            setTranscripts // We update store if we fetch new ones
+        } = useAppStore.getState();
+
+        // 1. Capture Source (Do this early)
+        setAnnotationSource({
+            view: currentState,
+            episodeId: playingEpisode.id,
+            previousAutoScrollEnabled: isAutoScrollEnabled,
+            captureTime: currentTime
+        });
+
+        // 2. Resolve Transcripts
+        let targetTranscripts = storeTranscripts;
+        // If empty or mismatch, fetch them
+        if (targetTranscripts.length === 0 || targetTranscripts[0].episode_id !== playingEpisode.id) {
+            try {
+                const fetched = await window.api.transcription.get(playingEpisode.id);
+                if (fetched && fetched.length > 0) {
+                    targetTranscripts = fetched;
+                    // Optional: Update store so it's cached? 
+                    // Be careful not to clobber Viewing Episode if user is looking at something else.
+                    // But for Annotation View, we probably want these transcripts to be available?
+                    // Yes, AnnotationView relies on `selectedSegments`. It doesn't strictly need `transcripts`.
+                    // But `PlayerView` needs `transcripts`.
+                    // If we are navigating to AnnotationView, we don't necessarily update `transcripts` global state 
+                    // unless we want to "switch context" to this episode.
+                    // Let's NOT update global `transcripts` to avoid UI flicker in background views.
+                    // We only use them to calculate segments.
+                } else {
+                    // No transcript found? Should not happen if UI showed the button.
+                    navigateToView('player', { episodeId: playingEpisode.id });
+                    return;
+                }
+            } catch (e) {
+                console.error("Failed to fetch transcript for note:", e);
+                navigateToView('player', { episodeId: playingEpisode.id });
+                return;
+            }
+        }
+
+        // 3. Auto-Select Segments
+        const now = currentTime;
+        const lookback = 15;
+        const candidates = targetTranscripts.filter(t =>
+            t.end_time >= (now - lookback) && t.start_time <= now
+        );
+
+        if (candidates.length > 0) {
+            setSelectedSegments(candidates);
+        } else {
+            const active = targetTranscripts.find(t => now >= t.start_time && now <= t.end_time);
+            if (active) setSelectedSegments([active]);
+        }
+
+        // 4. Navigate
+        navigateToView('annotation');
     };
 
     // Transcription Logic
@@ -108,7 +171,7 @@ export default function PersistentPlayerBar() {
     };
 
     return (
-        <div className="persistent-player-bar">
+        <div className={`persistent-player-bar ${visible ? 'visible' : ''}`}>
             {/* 1. Left: Metadata */}
             {/* 1. Left: Metadata */}
             <div

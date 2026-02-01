@@ -12,17 +12,23 @@ import './styles/App.css';
 
 import GlobalAudioController from './components/GlobalAudioController';
 import PersistentPlayerBar from './components/PersistentPlayerBar';
+import ErrorBoundary from './components/ErrorBoundary';
+import Toast from './components/Toast';
+
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 
 function App() {
   const {
     currentState,
-    podcasts,
     setPodcasts,
     navigateToView,
     viewingEpisode,
     playingEpisode
   } = useAppStore();
   const [isInitializing, setIsInitializing] = useState(true);
+
+  // Initialize global keyboard shortcuts
+  useKeyboardShortcuts();
 
   useEffect(() => {
     // Load podcasts on app start
@@ -34,8 +40,15 @@ function App() {
       const podcasts = await window.api.podcast.list();
       setPodcasts(podcasts);
 
-      // If we have podcasts, move to browsing state and REPLACE history
-      if (podcasts.length > 0 && currentState === 'onboarding') {
+      // Robustness: Check for invalid state (e.g. Player View with no Episode)
+      // This recovers the app if a bug landed the user in a broken persisted state.
+      const state = useAppStore.getState();
+      if (state.currentState === 'player' && !state.viewingEpisode) {
+        console.warn("Detected invalid Player View state. Resetting to Browsing.");
+        navigateToView('browsing', { replace: true });
+        // We do not return here, we let the rest of the flow continue (browsing view logic)
+      } else if (podcasts.length > 0 && currentState === 'onboarding') {
+        // Normal Onboarding -> Browsing flow
         navigateToView('browsing', { replace: true });
       }
 
@@ -96,9 +109,12 @@ function App() {
       {currentState !== 'onboarding' && <TopBar />}
       <div className="main-content">
         <ErrorBanner />
-        {renderView()}
+        <ErrorBoundary>
+          {renderView()}
+        </ErrorBoundary>
       </div>
-      {hasPlayerBar && <PersistentPlayerBar />}
+      {playingEpisode && <PersistentPlayerBar visible={hasPlayerBar} />}
+      <Toast />
     </div>
   );
 }

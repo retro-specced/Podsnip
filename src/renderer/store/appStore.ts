@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { Podcast, Episode, Transcript, Annotation, AppState } from '../../shared/types';
 
 interface HistorySnapshot {
@@ -106,226 +107,274 @@ interface AppStore {
   showSaveToast: boolean;
   setShowSaveToast: (show: boolean) => void;
 
+  // Transcript Toast (Actionable)
+  transcriptToast: { show: boolean; episodeId: number; } | null;
+  setTranscriptToast: (toast: { show: boolean; episodeId: number; } | null) => void;
+
   // Notes View State
   notesViewMode: 'masonry' | 'podcasts';
   notesSelectedPodcastId: number | null;
   setNotesViewMode: (mode: 'masonry' | 'podcasts') => void;
   setNotesSelectedPodcastId: (id: number | null) => void;
+  // Annotation Source & Return Logic
+  annotationSource: {
+    view: AppState;
+    episodeId: number | null;
+    previousAutoScrollEnabled: boolean;
+    captureTime: number;
+    // We could store more context if needed
+  } | null;
+  setAnnotationSource: (source: AppStore['annotationSource']) => void;
+
+  // Pending Scroll Target (for restoring position or jumping from note)
+  pendingScrollTarget: number | null;
+  setPendingScrollTarget: (time: number | null) => void;
 }
 
-export const useAppStore = create<AppStore>((set, get) => ({
-  // Initial state
-  currentState: 'onboarding',
-  history: [{ view: 'onboarding', podcast: null, episode: null, scrollPosition: 0, visibleCount: 20 }],
-  historyIndex: 0,
-  restoredScrollPosition: null,
-  restoredVisibleCount: null,
+export const useAppStore = create<AppStore>()(
+  persist(
+    (set, get) => ({
+      // Initial state
+      currentState: 'onboarding',
+      history: [{ view: 'onboarding', podcast: null, episode: null, scrollPosition: 0, visibleCount: 20 }],
+      historyIndex: 0,
+      restoredScrollPosition: null,
+      restoredVisibleCount: null,
 
-  podcasts: [],
-  currentPodcast: null,
-  episodes: [],
-  viewingEpisode: null,
-  playingEpisode: null,
-  transcripts: [],
-  transcribingEpisode: null,
-  annotations: [],
-  currentAnnotation: null,
-  isPlaying: false,
-  currentTime: 0,
-  playbackSpeed: 1.0,
-  jumpToTime: null,
-  isLoading: false,
-  error: null,
-  isAutoScrollEnabled: true,
-  isTranscribing: false,
-  transcriptionProgress: 0,
-  transcriptionStage: '',
-  selectedSegments: [],
-  showSaveToast: false,
+      podcasts: [],
+      currentPodcast: null,
+      episodes: [],
+      viewingEpisode: null,
+      playingEpisode: null,
+      transcripts: [],
+      transcribingEpisode: null,
+      annotations: [],
+      currentAnnotation: null,
+      isPlaying: false,
+      currentTime: 0,
+      playbackSpeed: 1.0,
+      jumpToTime: null,
+      isLoading: false,
+      error: null,
+      isAutoScrollEnabled: true,
+      isTranscribing: false,
+      transcriptionProgress: 0,
+      transcriptionStage: '',
+      selectedSegments: [],
+      showSaveToast: false,
+      transcriptToast: null,
 
-  notesViewMode: 'masonry',
-  notesSelectedPodcastId: null,
+      notesViewMode: 'masonry',
+      notesSelectedPodcastId: null,
 
-  // Actions
-  setIsAutoScrollEnabled: (enabled) => set({ isAutoScrollEnabled: enabled }),
+      annotationSource: null,
+      pendingScrollTarget: null,
 
-  updateCurrentSnapshot: (updates) => set((state) => {
-    const newHistory = [...state.history];
-    newHistory[state.historyIndex] = { ...newHistory[state.historyIndex], ...updates };
-    return { history: newHistory };
-  }),
+      // Actions
+      setAnnotationSource: (source) => set({ annotationSource: source }),
+      setPendingScrollTarget: (target) => set({ pendingScrollTarget: target }),
 
-  setRestoredScrollPosition: (pos) => set({ restoredScrollPosition: pos }),
-  setRestoredVisibleCount: (count) => set({ restoredVisibleCount: count }),
+      setIsAutoScrollEnabled: (enabled) => set({ isAutoScrollEnabled: enabled }),
 
-  setNotesViewMode: (mode) => set({ notesViewMode: mode }),
-  setNotesSelectedPodcastId: (id) => set({ notesSelectedPodcastId: id }),
+      updateCurrentSnapshot: (updates) => set((state) => {
+        const newHistory = [...state.history];
+        newHistory[state.historyIndex] = { ...newHistory[state.historyIndex], ...updates };
+        return { history: newHistory };
+      }),
 
-  navigateToView: (view, context: { podcastId?: number | null, episodeId?: number | null, replace?: boolean, notesViewMode?: 'masonry' | 'podcasts', notesSelectedPodcastId?: number | null } = {}) => set((state) => {
-    // 1. Transient View: Annotation
-    // If navigating TO annotation, just switch state. Do NOT touch history.
-    if (view === 'annotation') {
-      return { currentState: 'annotation' };
+      setRestoredScrollPosition: (pos) => set({ restoredScrollPosition: pos }),
+      setRestoredVisibleCount: (count) => set({ restoredVisibleCount: count }),
+
+      setNotesViewMode: (mode) => set({ notesViewMode: mode }),
+      setNotesSelectedPodcastId: (id) => set({ notesSelectedPodcastId: id }),
+
+      navigateToView: (view, context: { podcastId?: number | null, episodeId?: number | null, replace?: boolean, notesViewMode?: 'masonry' | 'podcasts', notesSelectedPodcastId?: number | null } = {}) => set((state) => {
+        // 1. Transient View: Annotation
+        // If navigating TO annotation, just switch state. Do NOT touch history.
+        if (view === 'annotation') {
+          return { currentState: 'annotation' };
+        }
+
+        const newSnapshot: HistorySnapshot = {
+          view,
+          podcast: context.podcastId !== undefined
+            ? (state.podcasts.find(p => p.id === context.podcastId) || null)
+            : state.currentPodcast,
+          episode: context.episodeId !== undefined
+            ? (state.episodes.find(e => e.id === context.episodeId) ||
+              (state.playingEpisode?.id === context.episodeId ? state.playingEpisode : null) ||
+              (state.viewingEpisode?.id === context.episodeId ? state.viewingEpisode : null)
+            )
+            : state.viewingEpisode, // Default to current viewing episode
+
+          // Capture current Notes state if we are navigating FROM notes (or just snapshotting generically?)
+          // Actually, we should snapshot the DESTINATION state if we are pushing?
+          // No, the snapshot represents the state related to that history entry.
+          // If we are navigating TO 'notes', we use context or defaults.
+          notesViewMode: view === 'notes' ? (context.notesViewMode || 'masonry') : undefined,
+          notesSelectedPodcastId: view === 'notes' ? (context.notesSelectedPodcastId || null) : undefined
+        };
+
+        let newHistory = [...state.history];
+        // If replace is true, overwrite current entry
+        if (context.replace) {
+          newHistory[state.historyIndex] = newSnapshot;
+          return {
+            currentState: view,
+            history: newHistory,
+            currentPodcast: newSnapshot.podcast,
+            viewingEpisode: newSnapshot.episode,
+            notesViewMode: newSnapshot.notesViewMode || 'masonry',
+            notesSelectedPodcastId: newSnapshot.notesSelectedPodcastId || null
+          };
+        }
+
+        // Otherwise push new entry
+        newHistory = newHistory.slice(0, state.historyIndex + 1);
+        newHistory.push(newSnapshot);
+
+        return {
+          currentState: view,
+          history: newHistory,
+          historyIndex: newHistory.length - 1,
+          currentPodcast: newSnapshot.podcast,
+          viewingEpisode: newSnapshot.episode,
+          notesViewMode: newSnapshot.notesViewMode || 'masonry',
+          notesSelectedPodcastId: newSnapshot.notesSelectedPodcastId || null
+        };
+      }),
+
+      navigateBack: () => set((state) => {
+        // 1. Transient View: Annotation
+        // If currently in annotation, just "close" it by restoring the current snapshot view.
+        if (state.currentState === 'annotation') {
+          const currentSnapshot = state.history[state.historyIndex];
+          return {
+            currentState: currentSnapshot.view
+          };
+        }
+
+        // 2. Standard Back with Onboarding Bypass
+        if (state.historyIndex > 0) {
+          let newIndex = state.historyIndex - 1;
+          let snapshot = state.history[newIndex];
+
+          // Bypass Onboarding: If target is onboarding, try to go back one more
+          if (snapshot.view === 'onboarding' && newIndex > 0) {
+            newIndex--;
+            snapshot = state.history[newIndex];
+          }
+          // If we are stuck at onboarding (newIndex === 0) AND it is onboarding,
+          // and we don't want to be there?
+          // Well, if the app started there, we can't really go back further.
+          // But typically, we replace onboarding history when entering browsing.
+          // So this check is just a safety net.
+
+          return {
+            historyIndex: newIndex,
+            currentState: snapshot.view,
+            currentPodcast: snapshot.podcast,
+            viewingEpisode: snapshot.episode,
+            // playingEpisode remains untouched!
+            restoredScrollPosition: snapshot.scrollPosition || 0,
+            restoredVisibleCount: snapshot.visibleCount || 20,
+            notesViewMode: snapshot.notesViewMode || 'masonry',
+            notesSelectedPodcastId: snapshot.notesSelectedPodcastId || null
+          };
+        }
+        return {};
+      }),
+
+      navigateForward: () => set((state) => {
+        // If we are in annotation view, 'Forward' shouldn't fundamentally allow leaving it 
+        // to go to the "next" history state unless we treat annotation as part of the previous state.
+        // Actually, if we are in annotation, we are "on top" of the current history index.
+        // So forward logic should probably just behave normally (and thus exit annotation)?
+        // Or should it be disabled?
+        // Let's assume standard behavior: move index forward + restore state.
+
+        if (state.historyIndex < state.history.length - 1) {
+          const newIndex = state.historyIndex + 1;
+          const snapshot = state.history[newIndex];
+          return {
+            historyIndex: newIndex,
+            currentState: snapshot.view,
+            currentPodcast: snapshot.podcast,
+            viewingEpisode: snapshot.episode,
+            // playingEpisode remains untouched!
+            restoredScrollPosition: snapshot.scrollPosition || 0,
+            restoredVisibleCount: snapshot.visibleCount || 20,
+            notesViewMode: snapshot.notesViewMode || 'masonry',
+            notesSelectedPodcastId: snapshot.notesSelectedPodcastId || null
+          };
+        }
+        return {};
+      }),
+
+      canGoBack: () => get().historyIndex > 0,
+      canGoForward: () => get().historyIndex < get().history.length - 1,
+
+      setCurrentState: (state) => set((s) => ({ ...s, currentState: state })),
+
+      setPodcasts: (podcasts) => set({ podcasts }),
+      setCurrentPodcast: (podcast) => set({ currentPodcast: podcast }),
+      addPodcast: (podcast) => set((state) => ({ podcasts: [...state.podcasts, podcast] })),
+      removePodcast: (podcastId) => set((state) => ({
+        podcasts: state.podcasts.filter(p => p.id !== podcastId)
+      })),
+
+      setEpisodes: (episodes) => set({ episodes }),
+      setViewingEpisode: (episode) => set({ viewingEpisode: episode }),
+      setPlayingEpisode: (episode) => set({ playingEpisode: episode }),
+
+      setTranscripts: (transcripts) => set({ transcripts }),
+
+      setAnnotations: (annotations) => set({ annotations }),
+      setCurrentAnnotation: (annotation) => set({ currentAnnotation: annotation }),
+
+      setIsPlaying: (playing) => set({ isPlaying: playing }),
+      setCurrentTime: (time) => set({ currentTime: time }),
+      setPlaybackSpeed: (speed) => set({ playbackSpeed: speed }),
+      setJumpToTime: (time) => set({ jumpToTime: time }),
+
+      setIsLoading: (loading) => set({ isLoading: loading }),
+      setError: (error) => set({ error }),
+
+      setTranscribingEpisode: (episode) => set({ transcribingEpisode: episode }),
+      setIsTranscribing: (transcribing) => set({ isTranscribing: transcribing }),
+      setTranscriptionProgress: (progress) => set({ transcriptionProgress: progress }),
+      setTranscriptionStage: (stage) => set({ transcriptionStage: stage }),
+
+
+      setSelectedSegments: (segments) => set({ selectedSegments: segments }),
+      toggleSegmentSelection: (segment) => set((state) => {
+        const exists = state.selectedSegments.find(s => s.id === segment.id);
+        if (exists) {
+          return { selectedSegments: state.selectedSegments.filter(s => s.id !== segment.id) };
+        } else {
+          return { selectedSegments: [...state.selectedSegments, segment] };
+        }
+      }),
+      clearSelectedSegments: () => set({ selectedSegments: [] }),
+
+      setShowSaveToast: (show) => set({ showSaveToast: show }),
+      setTranscriptToast: (toast) => set({ transcriptToast: toast }),
+    }),
+    {
+      name: 'podsnip-storage',
+      // Explicitly select what to persist
+      partialize: (state) => ({
+        playingEpisode: state.playingEpisode,
+        currentTime: state.currentTime,
+        playbackSpeed: state.playbackSpeed,
+        history: state.history,
+        historyIndex: state.historyIndex,
+        // Also helpful to persist the current view/context if we want to restore *exactly*
+        currentState: state.currentState,
+        viewingEpisode: state.viewingEpisode,
+        currentPodcast: state.currentPodcast,
+      }),
+      // We do NOT persist isPlaying, so it defaults to false (paused)
     }
-
-    const newSnapshot: HistorySnapshot = {
-      view,
-      podcast: context.podcastId !== undefined
-        ? (state.podcasts.find(p => p.id === context.podcastId) || null)
-        : state.currentPodcast,
-      episode: context.episodeId !== undefined
-        ? (state.episodes.find(e => e.id === context.episodeId) || null)
-        : state.viewingEpisode, // Default to current viewing episode
-
-      // Capture current Notes state if we are navigating FROM notes (or just snapshotting generically?)
-      // Actually, we should snapshot the DESTINATION state if we are pushing?
-      // No, the snapshot represents the state related to that history entry.
-      // If we are navigating TO 'notes', we use context or defaults.
-      notesViewMode: view === 'notes' ? (context.notesViewMode || 'masonry') : undefined,
-      notesSelectedPodcastId: view === 'notes' ? (context.notesSelectedPodcastId || null) : undefined
-    };
-
-    let newHistory = [...state.history];
-    // If replace is true, overwrite current entry
-    if (context.replace) {
-      newHistory[state.historyIndex] = newSnapshot;
-      return {
-        currentState: view,
-        history: newHistory,
-        currentPodcast: newSnapshot.podcast,
-        viewingEpisode: newSnapshot.episode,
-        notesViewMode: newSnapshot.notesViewMode || 'masonry',
-        notesSelectedPodcastId: newSnapshot.notesSelectedPodcastId || null
-      };
-    }
-
-    // Otherwise push new entry
-    newHistory = newHistory.slice(0, state.historyIndex + 1);
-    newHistory.push(newSnapshot);
-
-    return {
-      currentState: view,
-      history: newHistory,
-      historyIndex: newHistory.length - 1,
-      currentPodcast: newSnapshot.podcast,
-      viewingEpisode: newSnapshot.episode,
-      notesViewMode: newSnapshot.notesViewMode || 'masonry',
-      notesSelectedPodcastId: newSnapshot.notesSelectedPodcastId || null
-    };
-  }),
-
-  navigateBack: () => set((state) => {
-    // 1. Transient View: Annotation
-    // If currently in annotation, just "close" it by restoring the current snapshot view.
-    if (state.currentState === 'annotation') {
-      const currentSnapshot = state.history[state.historyIndex];
-      return {
-        currentState: currentSnapshot.view
-      };
-    }
-
-    // 2. Standard Back with Onboarding Bypass
-    if (state.historyIndex > 0) {
-      let newIndex = state.historyIndex - 1;
-      let snapshot = state.history[newIndex];
-
-      // Bypass Onboarding: If target is onboarding, try to go back one more
-      if (snapshot.view === 'onboarding' && newIndex > 0) {
-        newIndex--;
-        snapshot = state.history[newIndex];
-      }
-      // If we are stuck at onboarding (newIndex === 0) AND it is onboarding,
-      // and we don't want to be there?
-      // Well, if the app started there, we can't really go back further.
-      // But typically, we replace onboarding history when entering browsing.
-      // So this check is just a safety net.
-
-      return {
-        historyIndex: newIndex,
-        currentState: snapshot.view,
-        currentPodcast: snapshot.podcast,
-        viewingEpisode: snapshot.episode,
-        // playingEpisode remains untouched!
-        restoredScrollPosition: snapshot.scrollPosition || 0,
-        restoredVisibleCount: snapshot.visibleCount || 20,
-        notesViewMode: snapshot.notesViewMode || 'masonry',
-        notesSelectedPodcastId: snapshot.notesSelectedPodcastId || null
-      };
-    }
-    return {};
-  }),
-
-  navigateForward: () => set((state) => {
-    // If we are in annotation view, 'Forward' shouldn't fundamentally allow leaving it 
-    // to go to the "next" history state unless we treat annotation as part of the previous state.
-    // Actually, if we are in annotation, we are "on top" of the current history index.
-    // So forward logic should probably just behave normally (and thus exit annotation)?
-    // Or should it be disabled?
-    // Let's assume standard behavior: move index forward + restore state.
-
-    if (state.historyIndex < state.history.length - 1) {
-      const newIndex = state.historyIndex + 1;
-      const snapshot = state.history[newIndex];
-      return {
-        historyIndex: newIndex,
-        currentState: snapshot.view,
-        currentPodcast: snapshot.podcast,
-        viewingEpisode: snapshot.episode,
-        // playingEpisode remains untouched!
-        restoredScrollPosition: snapshot.scrollPosition || 0,
-        restoredVisibleCount: snapshot.visibleCount || 20,
-        notesViewMode: snapshot.notesViewMode || 'masonry',
-        notesSelectedPodcastId: snapshot.notesSelectedPodcastId || null
-      };
-    }
-    return {};
-  }),
-
-  canGoBack: () => get().historyIndex > 0,
-  canGoForward: () => get().historyIndex < get().history.length - 1,
-
-  setCurrentState: (state) => set((s) => ({ ...s, currentState: state })),
-
-  setPodcasts: (podcasts) => set({ podcasts }),
-  setCurrentPodcast: (podcast) => set({ currentPodcast: podcast }),
-  addPodcast: (podcast) => set((state) => ({ podcasts: [...state.podcasts, podcast] })),
-  removePodcast: (podcastId) => set((state) => ({
-    podcasts: state.podcasts.filter(p => p.id !== podcastId)
-  })),
-
-  setEpisodes: (episodes) => set({ episodes }),
-  setViewingEpisode: (episode) => set({ viewingEpisode: episode }),
-  setPlayingEpisode: (episode) => set({ playingEpisode: episode }),
-
-  setTranscripts: (transcripts) => set({ transcripts }),
-
-  setAnnotations: (annotations) => set({ annotations }),
-  setCurrentAnnotation: (annotation) => set({ currentAnnotation: annotation }),
-
-  setIsPlaying: (playing) => set({ isPlaying: playing }),
-  setCurrentTime: (time) => set({ currentTime: time }),
-  setPlaybackSpeed: (speed) => set({ playbackSpeed: speed }),
-  setJumpToTime: (time) => set({ jumpToTime: time }),
-
-  setIsLoading: (loading) => set({ isLoading: loading }),
-  setError: (error) => set({ error }),
-
-  setTranscribingEpisode: (episode) => set({ transcribingEpisode: episode }),
-  setIsTranscribing: (transcribing) => set({ isTranscribing: transcribing }),
-  setTranscriptionProgress: (progress) => set({ transcriptionProgress: progress }),
-  setTranscriptionStage: (stage) => set({ transcriptionStage: stage }),
-
-
-  setSelectedSegments: (segments) => set({ selectedSegments: segments }),
-  toggleSegmentSelection: (segment) => set((state) => {
-    const exists = state.selectedSegments.find(s => s.id === segment.id);
-    if (exists) {
-      return { selectedSegments: state.selectedSegments.filter(s => s.id !== segment.id) };
-    } else {
-      return { selectedSegments: [...state.selectedSegments, segment] };
-    }
-  }),
-  clearSelectedSegments: () => set({ selectedSegments: [] }),
-
-  setShowSaveToast: (show) => set({ showSaveToast: show }),
-}));
+  )
+);
