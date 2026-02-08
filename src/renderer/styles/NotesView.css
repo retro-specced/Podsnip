@@ -118,7 +118,59 @@
 .custom-dropdown-trigger:hover,
 .custom-dropdown-trigger.active {
   background: rgba(255, 255, 255, 0.08);
+  /* Match hover state */
   border-color: rgba(255, 255, 255, 0.2);
+  color: var(--text-primary);
+}
+
+.custom-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  /* Align left */
+  /* right: 0; Remove right align */
+  width: 180px;
+  /* Match BrowsingView width */
+  background: rgba(15, 23, 42, 0.95);
+  /* Match BrowsingView exact color */
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 50;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+  /* Match BrowsingView shadow */
+  backdrop-filter: blur(12px);
+  /* Ensure blur is present even if glass-panel removed */
+}
+
+/* Ensure glass-panel doesn't override if present */
+.custom-dropdown-menu.glass-panel {
+  background: rgba(15, 23, 42, 0.95);
+}
+
+.dropdown-option {
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: all 0.2s ease;
+}
+
+.dropdown-option:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+.dropdown-option.selected {
+  background: rgba(255, 255, 255, 0.1);
+  /* Match hover/active */
   color: var(--text-primary);
 }
 
