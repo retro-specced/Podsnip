@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAppStore } from '../store/appStore';
 import { Episode } from '../../shared/types';
 import AddPodcastModal from '../components/AddPodcastModal';
-import { Plus, Trash2, RefreshCw, Mic, FileText, Search, ChevronDown, Check } from 'lucide-react';
+import { Plus, Trash2, RefreshCw, Mic, FileText, Search, Check } from 'lucide-react';
 import { ScrollableContainer } from '../components/ScrollableContainer';
 import '../styles/BrowsingView.css';
 
@@ -118,11 +118,15 @@ function BrowsingView() {
     lastSidebarScrollTop.current = scrollTop;
   };
 
-  // Click outside for sidebar filter
+  // Click outside for sidebar filter and sort dropdown
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (sidebarFilterRef.current && !sidebarFilterRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (sidebarFilterRef.current && !sidebarFilterRef.current.contains(target)) {
         setIsSidebarFilterOpen(false);
+      }
+      if (sortDropdownRef.current && !sortDropdownRef.current.contains(target)) {
+        setIsSortDropdownOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -387,60 +391,63 @@ function BrowsingView() {
             />
           </div>
 
-          <div className="sidebar-filter-wrapper" ref={sidebarFilterRef}>
-            <button
-              className={`sidebar-filter-btn ${isSidebarFilterOpen ? 'active' : ''}`}
-              onClick={() => setIsSidebarFilterOpen(!isSidebarFilterOpen)}
-              title="Filter Podcasts"
-            >
-              <div className="filter-lines">
-                <div className="line line-1"></div>
-                <div className="line line-2"></div>
-                <div className="line line-3"></div>
-              </div>
-            </button>
 
-            <AnimatePresence>
-              {isSidebarFilterOpen && (
-                <motion.div
-                  className="sidebar-filter-dropdown glass-panel"
-                  initial={{ opacity: 0, y: -5, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -5, scale: 0.95 }}
-                  transition={{ duration: 0.15 }}
-                >
-                  <div className="filter-option" onClick={() => { setPodcastSortOrder('recentlyAdded'); setIsSidebarFilterOpen(false); }}>
-                    <span>Recently Added</span>
-                    {podcastSortOrder === 'recentlyAdded' && <Check size={14} className="text-primary-400" />}
-                  </div>
-                  <div className="filter-option" onClick={() => { setPodcastSortOrder('lastUpdated'); setIsSidebarFilterOpen(false); }}>
-                    <span>Last Updated</span>
-                    {podcastSortOrder === 'lastUpdated' && <Check size={14} className="text-primary-400" />}
-                  </div>
-                  <div className="filter-option" onClick={() => { setPodcastSortOrder('alphabeticalAZ'); setIsSidebarFilterOpen(false); }}>
-                    <span>Alphabetical (A-Z)</span>
-                    {podcastSortOrder === 'alphabeticalAZ' && <Check size={14} className="text-primary-400" />}
-                  </div>
-                  <div className="filter-option" onClick={() => { setPodcastSortOrder('alphabeticalZA'); setIsSidebarFilterOpen(false); }}>
-                    <span>Alphabetical (Z-A)</span>
-                    {podcastSortOrder === 'alphabeticalZA' && <Check size={14} className="text-primary-400" />}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
         </div>
 
         <ScrollableContainer className="podcast-list" onScroll={handleSidebarScroll} innerRef={sidebarListRef}>
           <div className="podcast-list-header">
             <h2 className="section-title">Your Podcasts</h2>
-            <button
-              className="add-podcast-button"
-              onClick={() => setShowAddModal(true)}
-              title="Add podcast"
-            >
-              <Plus size={18} />
-            </button>
+            <div className="sidebar-header-actions">
+              <div className="sidebar-filter-wrapper" ref={sidebarFilterRef}>
+                <button
+                  className={`sidebar-filter-btn ${isSidebarFilterOpen ? 'active' : ''}`}
+                  onClick={() => setIsSidebarFilterOpen(!isSidebarFilterOpen)}
+                  title="Filter Podcasts"
+                >
+                  <div className="filter-lines">
+                    <div className="line line-1"></div>
+                    <div className="line line-2"></div>
+                    <div className="line line-3"></div>
+                  </div>
+                </button>
+
+                <AnimatePresence>
+                  {isSidebarFilterOpen && (
+                    <motion.div
+                      className="sidebar-filter-dropdown glass-panel"
+                      initial={{ opacity: 0, y: -5, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -5, scale: 0.95 }}
+                      transition={{ duration: 0.15 }}
+                    >
+                      <div className="filter-option" onClick={() => { setPodcastSortOrder('recentlyAdded'); setIsSidebarFilterOpen(false); }}>
+                        <span>Recently Added</span>
+                        {podcastSortOrder === 'recentlyAdded' && <Check size={14} className="text-primary-400" />}
+                      </div>
+                      <div className="filter-option" onClick={() => { setPodcastSortOrder('lastUpdated'); setIsSidebarFilterOpen(false); }}>
+                        <span>Last Updated</span>
+                        {podcastSortOrder === 'lastUpdated' && <Check size={14} className="text-primary-400" />}
+                      </div>
+                      <div className="filter-option" onClick={() => { setPodcastSortOrder('alphabeticalAZ'); setIsSidebarFilterOpen(false); }}>
+                        <span>Alphabetical (A-Z)</span>
+                        {podcastSortOrder === 'alphabeticalAZ' && <Check size={14} className="text-primary-400" />}
+                      </div>
+                      <div className="filter-option" onClick={() => { setPodcastSortOrder('alphabeticalZA'); setIsSidebarFilterOpen(false); }}>
+                        <span>Alphabetical (Z-A)</span>
+                        {podcastSortOrder === 'alphabeticalZA' && <Check size={14} className="text-primary-400" />}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+              <button
+                className="add-podcast-button"
+                onClick={() => setShowAddModal(true)}
+                title="Add podcast"
+              >
+                <Plus size={18} />
+              </button>
+            </div>
           </div>
 
           {sortedPodcasts.map((podcast) => (
@@ -462,13 +469,7 @@ function BrowsingView() {
                 </div>
                 {podcast.has_new && <div className="unread-dot" title="New episodes available" />}
               </button>
-              <button
-                className="delete-podcast-button"
-                onClick={(e) => handleDeletePodcast(podcast.id, e)}
-                title="Delete podcast"
-              >
-                <Trash2 size={14} />
-              </button>
+
             </div>
           ))}
         </ScrollableContainer>
@@ -572,6 +573,15 @@ function BrowsingView() {
                       {isDescriptionExpanded ? 'Show Less' : 'Show More'}
                     </button>
                   )}
+
+                  <button
+                    className="delete-podcast-btn-large"
+                    onClick={(e) => handleDeletePodcast(currentPodcast.id, e)}
+                    title="Delete Podcast"
+                  >
+                    <Trash2 size={16} />
+                    <span>Delete Podcast</span>
+                  </button>
                 </div>
               </div>
 
@@ -587,34 +597,38 @@ function BrowsingView() {
                   />
                 </div>
 
-                <div className="sort-select-wrapper" ref={sortDropdownRef} onClick={() => setIsSortDropdownOpen(!isSortDropdownOpen)}>
-                  <div className="sort-select-trigger">
-                    <span className="sort-value-text">
-                      {sortOptions.find(opt => opt.value === sortBy)?.label}
-                    </span>
-                    <ChevronDown size={14} className={`sort-icon ${isSortDropdownOpen ? 'rotate-180' : ''}`} />
-                  </div>
+                <div className="sidebar-filter-wrapper" ref={sortDropdownRef}>
+                  <button
+                    className={`sidebar-filter-btn ${isSortDropdownOpen ? 'active' : ''}`}
+                    onClick={() => setIsSortDropdownOpen(!isSortDropdownOpen)}
+                    title="Sort Episodes"
+                  >
+                    <div className="filter-lines">
+                      <div className="line line-1"></div>
+                      <div className="line line-2"></div>
+                      <div className="line line-3"></div>
+                    </div>
+                  </button>
 
                   <AnimatePresence>
                     {isSortDropdownOpen && (
                       <motion.div
-                        className="sort-dropdown-menu glass-panel"
-                        initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                        className="sidebar-filter-dropdown glass-panel"
+                        initial={{ opacity: 0, y: -5, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                        transition={{ duration: 0.15, type: "spring", stiffness: 400, damping: 25, mass: 0.8 }}
-                        onClick={(e) => e.stopPropagation()}
+                        exit={{ opacity: 0, y: -5, scale: 0.95 }}
+                        transition={{ duration: 0.15 }}
                       >
                         {sortOptions.map((option) => (
                           <div
                             key={option.value}
-                            className={`sort-option ${sortBy === option.value ? 'selected' : ''}`}
+                            className="filter-option"
                             onClick={() => {
                               setSortBy(option.value);
                               setIsSortDropdownOpen(false);
                             }}
                           >
-                            {option.label}
+                            <span>{option.label}</span>
                             {sortBy === option.value && <Check size={14} className="text-primary-400" />}
                           </div>
                         ))}
