@@ -10,32 +10,172 @@
 }
 
 /* LEFT SIDEBAR - Podcast List */
+/* LEFT SIDEBAR - Podcast List */
 .browsing-left {
   width: 320px;
-  /* Slightly wider for better readability */
   min-width: 280px;
   background: var(--surface);
   border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
-  padding: var(--spacing-xl) 0 120px;
-  /* Added bottom padding for player clearance */
-  overflow-y: auto;
+  padding: 0;
+  overflow: visible;
+  /* Prevent clipping */
+  position: relative;
 }
 
-.podcast-list {
+/* Sidebar Search Header */
+.sidebar-search-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: rgba(15, 23, 42, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  transition: margin-top 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 20;
+  flex-shrink: 0;
+}
+
+.sidebar-search-header.hidden {
+  margin-top: -68px;
+  /* Exact height to hide */
+}
+
+.sidebar-search-bar {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  /* Pill shape */
+  padding: 6px 12px;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.sidebar-search-bar:focus-within {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.05);
+}
+
+.sidebar-search-bar input {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  width: 100%;
+}
+
+.sidebar-search-bar input::placeholder {
+  color: var(--text-muted);
+}
+
+/* Sidebar Filter */
+.sidebar-filter-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.sidebar-filter-btn {
+  background: transparent;
+  border: none;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0;
+  opacity: 0.7;
+}
+
+.sidebar-filter-btn:hover,
+.sidebar-filter-btn.active {
+  background: transparent;
+  border-color: transparent;
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.filter-lines {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-sm);
-  /* Increased from 4px to 8px */
-  padding: 0 var(--spacing-md);
+  gap: 3px;
+  align-items: flex-end;
+  /* Staggered look */
+}
+
+.filter-lines .line {
+  height: 2px;
+  background: var(--text-secondary);
+  border-radius: 2px;
+}
+
+.filter-lines .line-1 {
+  width: 14px;
+}
+
+.filter-lines .line-2 {
+  width: 10px;
+}
+
+.filter-lines .line-3 {
+  width: 6px;
+}
+
+.sidebar-filter-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 180px;
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 50;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+}
+
+.filter-option {
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: all 0.2s ease;
+}
+
+.filter-option:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+/* Update Podcast List for spacing */
+.podcast-list {
+  padding: var(--spacing-md);
+  flex: 1;
+  /* Take remaining height */
 }
 
 .podcast-list-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 var(--spacing-md) var(--spacing-md);
+  padding-bottom: var(--spacing-md);
   margin-bottom: var(--spacing-md);
 }
 
@@ -85,13 +225,16 @@
   border: 1px solid transparent;
   width: 100%;
   text-align: left;
-  transition: var(--transition);
+  /* transition: var(--transition); Let framer handle layout */
   cursor: pointer;
   color: var(--text-secondary);
+  position: relative;
+  /* For z-index context */
+  z-index: 1;
 }
 
 .podcast-item:hover {
-  background: rgba(255, 255, 255, 0.03);
+  /* background: rgba(255, 255, 255, 0.03); Moved to framer hover state or keep subtle */
   color: var(--text-primary);
 }
 
@@ -161,10 +304,28 @@
   right: 8px;
   opacity: 0;
   transition: var(--transition);
-  padding: 6px;
+  width: 28px;
+  /* Fixed width */
+  height: 28px;
+  /* Fixed height */
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 50%;
   background: rgba(0, 0, 0, 0.5);
   cursor: pointer;
+  z-index: 10;
+  /* Ensure clickable above podcast-item */
+  color: var(--text-secondary);
+  /* Default gray color */
+  padding: 0;
+  border: none;
+  line-height: 1;
+}
+
+.delete-podcast-button svg {
+  display: block;
+  transform: translateX(-0.5px);
 }
 
 .podcast-item-wrapper:hover .delete-podcast-button {
@@ -174,6 +335,8 @@
 .podcast-item-wrapper:hover .delete-podcast-button:hover {
   opacity: 1;
   background: rgba(239, 68, 68, 0.8);
+  color: white;
+  /* White text on red background */
 }
 
 /* RIGHT MAIN CONTENT */
@@ -181,32 +344,40 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
   background: var(--background);
   position: relative;
+  overflow: hidden;
+  /* Ensure hero blur doesn't weirdly clip */
+}
+
+.podcast-hero-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 400px;
+  background-size: cover;
+  background-position: center;
+  mask-image: linear-gradient(to bottom, black 0%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black 0%, transparent 100%);
+  opacity: 0.3;
+  filter: blur(40px) saturate(1.5);
+  z-index: 0;
+  pointer-events: none;
 }
 
 .podcast-header {
-  padding: 100px var(--spacing-2xl) var(--spacing-2xl);
-  /* Increased side padding to 48px */
+  position: relative;
+  /* For z-index above hero */
+  padding: 80px var(--spacing-2xl) var(--spacing-2xl);
   display: flex;
   gap: var(--spacing-2xl);
-  align-items: flex-end;
-  background: linear-gradient(to bottom,
-      rgba(96, 165, 250, 0.05) 0%,
-      rgba(15, 23, 42, 0) 100%);
-  border-bottom: 1px solid var(--border-color);
-  transition: var(--transition);
+  align-items: flex-start;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  z-index: 1;
 }
 
-.podcast-header-top {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-}
-
-/* RESTORED MISSING IMAGE RULES */
-.podcast-header-artwork,
+/* Column 1 is just the img tag directly child of header now, styling handled by .podcast-artwork-large */
 .podcast-artwork-large {
   width: 180px;
   height: 180px;
@@ -218,40 +389,52 @@
   transition: var(--transition);
 }
 
-.podcast-header-artwork:hover,
 .podcast-artwork-large:hover {
   transform: scale(1.02);
   box-shadow: 0 30px 60px -10px rgba(0, 0, 0, 0.7), 0 0 20px var(--primary-glow);
 }
 
-.podcast-details {
-  display: flex;
-  gap: var(--spacing-xl);
-  width: 100%;
-}
-
-.podcast-header-info,
-.podcast-meta {
+/* Column 2: Info */
+.podcast-header-info-col {
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
+  /* Push content to bottom to align with artwork if height matches, or just stack */
   gap: var(--spacing-sm);
-  flex: 1;
-  min-width: 0;
+  flex: 0 0 300px;
+  /* Fixed width or flexible? "Next to it is title..." Suggests a block. */
+  min-width: 250px;
+  max-width: 400px;
+  height: 180px;
+  /* Match artwork height effectively to align bottom */
 }
 
-.podcast-title-large,
-.podcast-header-title {
+/* Column 3: Description */
+.podcast-header-desc-col {
+  flex: 1;
+  /* Take remaining space */
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  height: 100%;
+  min-width: 0;
+  /* fix flex truncation */
+  padding-left: var(--spacing-xl);
+  border-left: 1px solid rgba(255, 255, 255, 0.05);
+  /* Optional separator */
+}
+
+.podcast-title-large {
   font-family: var(--font-family-display);
-  font-size: 48px;
+  font-size: 32px;
+  /* Slightly smaller to fit 3 cols */
   font-weight: 700;
   line-height: 1.1;
   color: var(--text-primary);
   text-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
 }
 
-.podcast-author-large,
-.podcast-header-author {
+.podcast-author-large {
   font-size: var(--font-size-lg);
   color: var(--text-secondary);
   font-weight: 500;
@@ -261,7 +444,9 @@
   display: flex;
   align-items: center;
   gap: var(--spacing-md);
-  margin-top: var(--spacing-md);
+  margin-top: auto;
+  /* Push to bottom of info col */
+  padding-top: var(--spacing-sm);
 }
 
 .refresh-status-message {
@@ -274,6 +459,13 @@
   border-radius: 50%;
   color: var(--text-secondary);
   transition: var(--transition);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  line-height: 1;
+  cursor: pointer;
 }
 
 .refresh-button:hover {
@@ -287,8 +479,6 @@
 
 /* Description & Meta Bubbles */
 .podcast-description-container {
-  max-width: 800px;
-  margin-top: var(--spacing-md);
   color: var(--text-secondary);
   font-size: var(--font-size-sm);
   line-height: 1.6;
@@ -296,13 +486,16 @@
 
 .podcast-description {
   display: -webkit-box;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 6;
+  /* Show more lines in this layout */
+  line-clamp: 6;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
 .podcast-description-container.expanded .podcast-description {
   -webkit-line-clamp: unset;
+  line-clamp: unset;
 }
 
 .show-more-btn {
@@ -310,12 +503,13 @@
   font-size: var(--font-size-sm);
   font-weight: 600;
   margin-top: 4px;
+  align-self: flex-start;
 }
 
 .podcast-meta-bubbles {
   display: flex;
   gap: var(--spacing-sm);
-  margin-top: var(--spacing-md);
+  margin-top: var(--spacing-sm);
   flex-wrap: wrap;
 }
 
@@ -337,33 +531,132 @@
 /* Episodes Controls & List */
 .episodes-controls {
   padding: var(--spacing-lg) var(--spacing-2xl);
-  /* Match header side padding */
   display: flex;
   gap: var(--spacing-md);
-  border-bottom: 1px solid var(--border-color);
-  background: rgba(2, 6, 23, 0.95);
-  /* Slightly translucent backing */
-  backdrop-filter: blur(10px);
+  align-items: center;
+  /* Seamless sticky header */
+  background: rgba(2, 6, 23, 0.8);
+  /* More transparent */
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  /* Subtle border */
   position: sticky;
   top: 0;
   z-index: 10;
 }
 
+.search-bar-wrapper {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  /* Pill shape */
+  padding: 8px 16px;
+  transition: var(--transition);
+}
+
+.search-bar-wrapper:focus-within {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.05);
+}
+
+.search-icon {
+  color: var(--text-secondary);
+  margin-right: 12px;
+}
+
 .episode-search {
   flex: 1;
-  background: var(--surface);
-  border: 1px solid var(--border-color);
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  padding: 0;
+}
+
+.episode-search::placeholder {
+  color: var(--text-muted);
+}
+
+.sort-select-wrapper {
+  position: relative;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  padding: 8px 16px;
+  transition: var(--transition);
+  cursor: pointer;
+  min-width: 160px;
+  /* Ensure enough width for options */
+  user-select: none;
+}
+
+.sort-select-wrapper:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.sort-select-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  gap: 8px;
+}
+
+.sort-icon {
+  color: var(--text-secondary);
+  transition: transform 0.2s ease;
+}
+
+.sort-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 100%;
+  /* Match wrapper width */
+  min-width: 180px;
+  background: rgba(15, 23, 42, 0.95);
+  /* Darker backdrop for menu */
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 50;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 4px 10px -5px rgba(0, 0, 0, 0.2);
+  transform-origin: top center;
+}
+
+.sort-option {
   padding: 8px 12px;
-  border-radius: var(--radius-sm);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: all 0.2s ease;
+}
+
+.sort-option:hover {
+  background: rgba(255, 255, 255, 0.1);
   color: var(--text-primary);
 }
 
-.sort-select {
-  background: var(--surface);
-  border: 1px solid var(--border-color);
-  padding: 8px 12px;
-  border-radius: var(--radius-sm);
-  color: var(--text-primary);
+.sort-option.selected {
+  background: rgba(96, 165, 250, 0.15);
+  color: var(--primary-color);
+  font-weight: 500;
 }
 
 .episodes-list {
@@ -434,6 +727,7 @@
   color: var(--text-secondary);
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   margin-top: 4px;

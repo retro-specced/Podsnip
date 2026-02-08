@@ -129,6 +129,12 @@ interface AppStore {
   // Pending Scroll Target (for restoring position or jumping from note)
   pendingScrollTarget: number | null;
   setPendingScrollTarget: (time: number | null) => void;
+
+  // Sidebar Search & Sort
+  podcastSortOrder: 'recentlyAdded' | 'lastUpdated' | 'alphabeticalAZ' | 'alphabeticalZA';
+  setPodcastSortOrder: (order: 'recentlyAdded' | 'lastUpdated' | 'alphabeticalAZ' | 'alphabeticalZA') => void;
+  podcastSearchQuery: string;
+  setPodcastSearchQuery: (query: string) => void;
 }
 
 export const useAppStore = create<AppStore>()(
@@ -173,6 +179,11 @@ export const useAppStore = create<AppStore>()(
       // Actions
       setAnnotationSource: (source) => set({ annotationSource: source }),
       setPendingScrollTarget: (target) => set({ pendingScrollTarget: target }),
+
+      podcastSortOrder: 'recentlyAdded',
+      setPodcastSortOrder: (order) => set({ podcastSortOrder: order }),
+      podcastSearchQuery: '',
+      setPodcastSearchQuery: (query) => set({ podcastSearchQuery: query }),
 
       setIsAutoScrollEnabled: (enabled) => set({ isAutoScrollEnabled: enabled }),
 
@@ -373,6 +384,7 @@ export const useAppStore = create<AppStore>()(
         currentState: state.currentState,
         viewingEpisode: state.viewingEpisode,
         currentPodcast: state.currentPodcast,
+        podcastSortOrder: state.podcastSortOrder, // Persist sort order
       }),
       // We do NOT persist isPlaying, so it defaults to false (paused)
     }
