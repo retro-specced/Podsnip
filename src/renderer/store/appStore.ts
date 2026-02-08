@@ -22,7 +22,13 @@ interface AppStore {
   historyIndex: number;
 
   // Unified Navigation Action
-  navigateToView: (view: AppState, context?: { podcastId?: number | null, episodeId?: number | null, replace?: boolean }) => void;
+  navigateToView: (view: AppState, context?: {
+    podcastId?: number | null,
+    episodeId?: number | null,
+    replace?: boolean,
+    notesViewMode?: 'masonry' | 'podcasts',
+    notesSelectedPodcastId?: number | null
+  }) => void;
   navigateBack: () => void;
   navigateForward: () => void;
   canGoBack: () => boolean;

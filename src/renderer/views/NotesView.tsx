@@ -4,6 +4,21 @@ import { Annotation } from '../../shared/types';
 import '../styles/NotesView.css';
 import { format } from 'date-fns';
 import { ScrollableContainer } from '../components/ScrollableContainer';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Search,
+  ChevronDown,
+  Check,
+  Filter,
+  LayoutGrid,
+  List,
+  Calendar,
+  Clock,
+  ArrowUpDown,
+  Trash2,
+  Headphones
+} from 'lucide-react';
+
 
 interface EnrichedAnnotation extends Annotation {
   transcript_text: string;
@@ -39,12 +54,10 @@ function NotesView() {
     notesViewMode,
     notesSelectedPodcastId,
     restoredScrollPosition,
-    // Actions for Jump
+    updateCurrentSnapshot,
     setIsAutoScrollEnabled,
     setSelectedSegments,
-    setPendingScrollTarget,
-    // We don't need setters, we navigate
-    updateCurrentSnapshot
+    setPendingScrollTarget
   } = useAppStore();
 
   const [filteredAnnotations, setFilteredAnnotations] = useState<EnrichedAnnotation[]>([]);
@@ -52,6 +65,12 @@ function NotesView() {
   const [sortBy, setSortBy] = useState<'newest' | 'oldest'>('newest');
   const [timeRange, setTimeRange] = useState<'all' | 'today' | 'week' | 'month' | 'year'>('all');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+
+  // UI State for Custom Dropdowns
+  const [isTimeDropdownOpen, setIsTimeDropdownOpen] = useState(false);
+  const [isSortDropdownOpen, setIsSortDropdownOpen] = useState(false);
+  const timeDropdownRef = useRef<HTMLDivElement>(null);
+  const sortDropdownRef = useRef<HTMLDivElement>(null);
 
   // Refs
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -63,6 +82,21 @@ function NotesView() {
       scrollContainerRef.current.scrollTop = restoredScrollPosition;
     }
   }, [restoredScrollPosition]); // On mount/update
+
+  // Click outside for dropdowns
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (timeDropdownRef.current && !timeDropdownRef.current.contains(target)) {
+        setIsTimeDropdownOpen(false);
+      }
+      if (sortDropdownRef.current && !sortDropdownRef.current.contains(target)) {
+        setIsSortDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // 2. Navigation Helper
   const handleInternalNavigate = (mode: 'masonry' | 'podcasts', podcastId: number | null = null) => {
@@ -312,15 +346,27 @@ function NotesView() {
   };
 
   const renderNoteCard = (annotation: EnrichedAnnotation, compact: boolean = false) => (
-    <div key={annotation.id} className="note-card">
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      transition={{ duration: 0.2 }}
+      key={annotation.id}
+      className="note-card glass-panel"
+    >
       {!compact ? (
         <div className="note-episode-info">
-          {annotation.episode_artwork && (
+          {annotation.episode_artwork ? (
             <img
               src={annotation.episode_artwork}
               alt={annotation.episode_title}
               className="note-episode-artwork"
             />
+          ) : (
+            <div className="note-episode-artwork-placeholder">
+              <Headphones size={20} />
+            </div>
           )}
           <div className="note-episode-details">
             <h4 className="note-episode-title">{annotation.episode_title}</h4>
@@ -329,14 +375,13 @@ function NotesView() {
         </div>
       ) : (
         <div className="note-header-compact" style={{ marginBottom: '8px' }}>
-          <div className="note-timestamp" style={{ fontSize: '0.85em', color: 'var(--text-secondary)' }}>
+          <div className="note-timestamp" style={{ fontSize: '0.85em', color: 'var(--primary-color)' }}>
             {formatTime(annotation.start_time)}
           </div>
         </div>
       )}
 
       <div className="note-transcript">
-        <div className="note-transcript-label">Transcript:</div>
         <div className="note-transcript-text">"{annotation.transcript_text}"</div>
       </div>
 
@@ -363,7 +408,7 @@ function NotesView() {
             onClick={() => handleJumpToPodcast(annotation)}
             title="Jump to podcast"
           >
-            <span className="action-icon">🎧</span>
+            <Headphones size={14} />
           </button>
           <button
             className="note-action-button delete"
@@ -373,50 +418,59 @@ function NotesView() {
             }}
             title="Delete note"
           >
-            <span className="action-icon">🗑️</span>
+            <Trash2 size={14} />
           </button>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 
   // Render Masonry Grid (All Notes)
   const renderMasonryGrid = () => (
     <div className="notes-masonry-grid">
-      {filteredAnnotations.map((a) => renderNoteCard(a))}
+      <AnimatePresence mode='popLayout'>
+        {filteredAnnotations.map((a) => renderNoteCard(a))}
+      </AnimatePresence>
     </div>
   );
 
   // Render Podcast List (Level 1)
   const renderPodcastList = () => (
     <div className="podcast-grid">
-      {groupedPodcasts.map((group) => (
-        <div
-          key={group.podcastId}
-          className="podcast-notes-card"
-          onClick={() => handleInternalNavigate('podcasts', group.podcastId)}
-        >
-          {group.artworkUrl ? (
-            <div className="podcast-notes-artwork-container">
-              <img src={group.artworkUrl} alt={group.podcastTitle} className="podcast-notes-artwork" />
-            </div>
-          ) : (
-            <div className="podcast-notes-artwork-placeholder">
-              <span>🎙️</span>
-            </div>
-          )}
+      <AnimatePresence mode='popLayout'>
+        {groupedPodcasts.map((group) => (
+          <motion.div
+            layout
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            transition={{ duration: 0.2 }}
+            key={group.podcastId}
+            className="podcast-notes-card"
+            onClick={() => handleInternalNavigate('podcasts', group.podcastId)}
+          >
+            {group.artworkUrl ? (
+              <div className="podcast-notes-artwork-container">
+                <img src={group.artworkUrl} alt={group.podcastTitle} className="podcast-notes-artwork" />
+              </div>
+            ) : (
+              <div className="podcast-notes-artwork-placeholder">
+                <Headphones size={48} />
+              </div>
+            )}
 
-          <div className="podcast-notes-info">
-            <h3 className="podcast-notes-title">{group.podcastTitle}</h3>
-            <div className="podcast-notes-footer">
-              <span className="podcast-notes-count">{group.annotations.length} Notes</span>
-              <div className="podcast-last-updated">
-                Last edited {formatDate(group.annotations[0].created_at)}
+            <div className="podcast-notes-info">
+              <h3 className="podcast-notes-title">{group.podcastTitle}</h3>
+              <div className="podcast-notes-footer">
+                <span className="podcast-notes-count">{group.annotations.length} Notes</span>
+                <div className="podcast-last-updated">
+                  Last edited {formatDate(group.annotations[0].created_at)}
+                </div>
               </div>
             </div>
-          </div>
-        </div>
-      ))}
+          </motion.div>
+        ))}
+      </AnimatePresence>
     </div>
   );
 
@@ -501,24 +555,41 @@ function NotesView() {
   return (
     <div className="notes-view">
       {/* Top Section */}
+      {/* Top Section */}
       <div className="notes-top-section">
         <div className="notes-header-row">
           <h2 className="section-title">Notes Library</h2>
 
-          {/* View Toggle */}
+          {/* View Toggle - Segmented Control */}
           {!selectedPodcastId && (
             <div className="notes-view-toggle">
               <button
                 className={`toggle-option ${viewMode === 'masonry' ? 'active' : ''}`}
                 onClick={() => handleInternalNavigate('masonry')}
               >
-                All Notes
+                <LayoutGrid size={14} />
+                <span>All Notes</span>
+                {viewMode === 'masonry' && (
+                  <motion.div
+                    layoutId="toggle-active"
+                    className="toggle-active-bg"
+                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                  />
+                )}
               </button>
               <button
                 className={`toggle-option ${viewMode === 'podcasts' ? 'active' : ''}`}
                 onClick={() => handleInternalNavigate('podcasts')}
               >
-                Podcasts
+                <List size={14} />
+                <span>By Podcast</span>
+                {viewMode === 'podcasts' && (
+                  <motion.div
+                    layoutId="toggle-active"
+                    className="toggle-active-bg"
+                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                  />
+                )}
               </button>
             </div>
           )}
@@ -526,59 +597,149 @@ function NotesView() {
 
         {/* Controls Bar */}
         <div className="notes-controls-bar">
-          <input
-            type="text"
-            placeholder="Search notes..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="notes-search"
-          />
-          <select
-            value={timeRange}
-            onChange={(e) => setTimeRange(e.target.value as any)}
-            className="sort-select"
-            style={{ marginRight: '8px' }}
-          >
-            <option value="all">All Time</option>
-            <option value="today">Today</option>
-            <option value="week">This Week</option>
-            <option value="month">This Month</option>
-            <option value="year">This Year</option>
-          </select>
-          <select value={sortBy} onChange={(e) => setSortBy(e.target.value as any)} className="sort-select">
-            <option value="newest">Newest First</option>
-            <option value="oldest">Oldest First</option>
-          </select>
+          <div className="notes-search-wrapper">
+            <Search size={16} className="search-icon" />
+            <input
+              type="text"
+              placeholder="Search notes..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="notes-search-input"
+            />
+          </div>
 
-          <div className="notes-stats-small" style={{ marginLeft: 'auto' }}>
-            <span className="stat-item">{groupedPodcasts.length} Podcasts</span>
-            <span className="stat-separator">•</span>
-            <span className="stat-item">{annotations.length} Notes</span>
+          <div className="notes-filters-group">
+            {/* Time Range Dropdown */}
+            <div className="custom-dropdown-wrapper" ref={timeDropdownRef}>
+              <button
+                className={`custom-dropdown-trigger ${isTimeDropdownOpen ? 'active' : ''} ${timeRange !== 'all' ? 'has-value' : ''}`}
+                onClick={() => setIsTimeDropdownOpen(!isTimeDropdownOpen)}
+              >
+                <Clock size={14} />
+                <span>
+                  {timeRange === 'all' && 'All Time'}
+                  {timeRange === 'today' && 'Today'}
+                  {timeRange === 'week' && 'This Week'}
+                  {timeRange === 'month' && 'This Month'}
+                  {timeRange === 'year' && 'This Year'}
+                </span>
+                <ChevronDown size={14} className={`dropdown-arrow ${isTimeDropdownOpen ? 'open' : ''}`} />
+              </button>
+
+              <AnimatePresence>
+                {isTimeDropdownOpen && (
+                  <motion.div
+                    className="custom-dropdown-menu glass-panel"
+                    initial={{ opacity: 0, y: -5, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -5, scale: 0.95 }}
+                    transition={{ duration: 0.15 }}
+                  >
+                    {[
+                      { value: 'all', label: 'All Time' },
+                      { value: 'today', label: 'Today' },
+                      { value: 'week', label: 'This Week' },
+                      { value: 'month', label: 'This Month' },
+                      { value: 'year', label: 'This Year' },
+                    ].map((opt) => (
+                      <div
+                        key={opt.value}
+                        className={`dropdown-option ${timeRange === opt.value ? 'selected' : ''}`}
+                        onClick={() => {
+                          setTimeRange(opt.value as any);
+                          setIsTimeDropdownOpen(false);
+                        }}
+                      >
+                        {opt.label}
+                        {timeRange === opt.value && <Check size={14} className="text-primary-400" />}
+                      </div>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Sort Dropdown */}
+            <div className="custom-dropdown-wrapper" ref={sortDropdownRef}>
+              <button
+                className={`custom-dropdown-trigger ${isSortDropdownOpen ? 'active' : ''}`}
+                onClick={() => setIsSortDropdownOpen(!isSortDropdownOpen)}
+              >
+                <ArrowUpDown size={14} />
+                <span>{sortBy === 'newest' ? 'Newest' : 'Oldest'}</span>
+                <ChevronDown size={14} className={`dropdown-arrow ${isSortDropdownOpen ? 'open' : ''}`} />
+              </button>
+
+              <AnimatePresence>
+                {isSortDropdownOpen && (
+                  <motion.div
+                    className="custom-dropdown-menu glass-panel"
+                    initial={{ opacity: 0, y: -5, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -5, scale: 0.95 }}
+                    transition={{ duration: 0.15 }}
+                  >
+                    <div
+                      className={`dropdown-option ${sortBy === 'newest' ? 'selected' : ''}`}
+                      onClick={() => {
+                        setSortBy('newest');
+                        setIsSortDropdownOpen(false);
+                      }}
+                    >
+                      Newest First
+                      {sortBy === 'newest' && <Check size={14} className="text-primary-400" />}
+                    </div>
+                    <div
+                      className={`dropdown-option ${sortBy === 'oldest' ? 'selected' : ''}`}
+                      onClick={() => {
+                        setSortBy('oldest');
+                        setIsSortDropdownOpen(false);
+                      }}
+                    >
+                      Oldest First
+                      {sortBy === 'oldest' && <Check size={14} className="text-primary-400" />}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </div>
 
         {/* Tag Filter Bar */}
-        {uniqueTags.length > 0 && (
-          <div className="tags-filter-bar">
-            <div className="tags-filter-scroll">
-              <button
-                className={`filter-tag-chip ${selectedTags.length === 0 ? 'active' : ''}`}
-                onClick={() => setSelectedTags([])}
-              >
-                All
-              </button>
-              {uniqueTags.map(tag => (
+        <AnimatePresence>
+          {uniqueTags.length > 0 && (
+            <motion.div
+              className="tags-filter-bar"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+            >
+              <div className="tags-filter-scroll">
                 <button
-                  key={tag}
-                  className={`filter-tag-chip ${selectedTags.includes(tag) ? 'active' : ''}`}
-                  onClick={() => toggleTag(tag)}
+                  className={`filter-tag-chip ${selectedTags.length === 0 ? 'active' : ''}`}
+                  onClick={() => setSelectedTags([])}
                 >
-                  #{tag}
+                  Running
                 </button>
-              ))}
-            </div>
-          </div>
-        )}
+                {uniqueTags.map(tag => (
+                  <button
+                    key={tag}
+                    className={`filter-tag-chip ${selectedTags.includes(tag) ? 'active' : ''}`}
+                    onClick={() => toggleTag(tag)}
+                  >
+                    #{tag}
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Stats Line */}
+        <div className="notes-stats-line">
+          showing {filteredAnnotations.length} note{filteredAnnotations.length !== 1 && 's'} across {groupedPodcasts.length} podcast{groupedPodcasts.length !== 1 && 's'}
+        </div>
       </div>
 
       <ScrollableContainer className="notes-content-area" innerRef={scrollContainerRef}>
