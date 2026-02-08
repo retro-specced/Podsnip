@@ -41,81 +41,136 @@
   align-items: center;
 }
 
-.notes-search {
+/* Glass Search Bar */
+.notes-search-wrapper {
   flex: 1;
-  max-width: 400px;
-  padding: var(--spacing-md);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-sm);
-  background: var(--surface);
+  max-width: 600px;
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  /* Pill shape */
+  padding: 0 16px;
+  height: 40px;
+  transition: all 0.2s ease;
+}
+
+.notes-search-wrapper:focus-within {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.05);
+}
+
+.notes-search-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-size: 14px;
+  padding: 0 8px;
+  height: 100%;
+}
+
+.notes-search-input::placeholder {
+  color: var(--text-muted);
+}
+
+.search-icon {
+  color: var(--text-secondary);
+}
+
+/* Custom Dropdowns */
+.notes-filters-group {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.custom-dropdown-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.custom-dropdown-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  line-height: 1;
+}
+
+.custom-dropdown-trigger span {
+  margin-top: 1px;
+}
+
+.custom-dropdown-trigger:hover,
+.custom-dropdown-trigger.active {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
   color: var(--text-primary);
 }
-
-.notes-search:focus {
-  outline: none;
-  border-color: var(--primary-color);
-}
-
-.notes-content-area {
-  flex: 1;
-  overflow-y: auto;
-  min-height: 0;
-  /* Important for flex child scrolling */
-  /* Add padding to bottom to avoid content being cut off */
-  padding-bottom: 120px;
-  /* Added bottom padding for player clearance */
-}
-
-.notes-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-lg);
-}
-
-.note-card {
-  break-inside: avoid;
-  /* Prevent card from splitting across columns */
-  margin-bottom: var(--spacing-lg);
-  /* Bottom margin for masonry vertical spacing */
-  padding: var(--spacing-lg);
-  background: var(--background);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  transition: var(--transition);
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-md);
-}
-
-/* ... existing styles ... */
 
 /* View Toggle */
 .notes-view-toggle {
   display: flex;
-  background: var(--surface);
+  background: rgba(255, 255, 255, 0.05);
   padding: 4px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
   gap: 4px;
+  position: relative;
+  align-items: center;
 }
 
 .toggle-option {
-  padding: 6px 16px;
-  border-radius: var(--radius-sm);
-  font-size: var(--font-size-sm);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 14px;
+  height: 32px;
+  border-radius: 8px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--text-secondary);
   cursor: pointer;
   border: none;
   background: transparent;
-  transition: all 0.2s;
+  transition: color 0.2s;
+  z-index: 1;
+  line-height: 1;
+}
+
+.toggle-option span {
+  margin-top: 1px;
 }
 
 .toggle-option.active {
-  background: var(--primary-color);
   color: white;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.toggle-active-bg {
+  position: absolute;
+  inset: 0;
+  background: var(--surface-highlight);
+  /* Or primary color opacity */
+  border-radius: 8px;
+  z-index: -1;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 /* Masonry Layout */
@@ -170,7 +225,7 @@
 /* Episode Info */
 .note-episode-info {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
   padding-bottom: 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
@@ -179,7 +234,97 @@
 .note-episode-artwork {
   width: 40px;
   height: 40px;
-  border-radius: 8px;
+  border-radius: 0;
+  object-fit: cover;
+  flex-shrink: 0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Glass Search Bar */
+.notes-search-wrapper {
+  flex: 1;
+  max-width: 600px;
+  /* Increased from 400px */
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  /* Pill shape */
+  padding: 8px 16px;
+  transition: all 0.2s ease;
+  height: 40px;
+  /* Enforce height */
+}
+
+/* ... (input styles same) ... */
+
+.notes-search-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-size: 14px;
+  padding: 0 8px;
+  height: 100%;
+  /* Fill height */
+}
+
+/* Custom Dropdowns */
+.notes-filters-group {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.custom-dropdown-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px;
+  /* Use horizontal padding only, let height define vertical */
+  height: 40px;
+  /* Match search bar height */
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  line-height: 1;
+  /* Fix vertical alignment */
+}
+
+.custom-dropdown-trigger span {
+  display: flex;
+  /* Ensure text centers if it has line-height issues */
+  align-items: center;
+  margin-top: 1px;
+  /* Optical optical alignment */
+}
+
+/* ... */
+
+/* Episode Info */
+.note-episode-info {
+  display: flex;
+  align-items: center;
+  /* Align icon and text block centered vertically? Or top? */
+  align-items: flex-start;
+  /* Better for multiline titles */
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.note-episode-artwork {
+  width: 40px;
+  height: 40px;
+  border-radius: 0;
+  /* Squared as requested */
   object-fit: cover;
   flex-shrink: 0;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
@@ -188,7 +333,8 @@
 .note-episode-artwork-placeholder {
   width: 40px;
   height: 40px;
-  border-radius: 8px;
+  border-radius: 0;
+  /* Squared */
   background: rgba(255, 255, 255, 0.05);
   display: flex;
   align-items: center;
@@ -201,7 +347,10 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
+  justify-content: center;
+  /* Center vertically against artwork */
+  min-height: 40px;
 }
 
 .note-episode-title {
@@ -220,10 +369,10 @@
   color: var(--primary-color);
   font-weight: 600;
   font-family: monospace;
-  background: rgba(var(--primary-rgb), 0.1);
-  padding: 2px 6px;
-  border-radius: 4px;
-  width: fit-content;
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  opacity: 0.9;
 }
 
 /* Transcript Block */
