@@ -9,6 +9,8 @@ let db: DatabaseService;
 let podcastService: PodcastService;
 let localWhisperService: LocalWhisperService;
 
+app.setName('Podsnip');
+
 function createWindow() {
   const icon = nativeImage.createFromPath(path.join(__dirname, '../../icon.png'));
 
@@ -17,6 +19,7 @@ function createWindow() {
     height: 900,
     minWidth: 1000,
     minHeight: 600,
+    title: 'Podsnip',
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,

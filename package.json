@@ -1,5 +1,6 @@
 {
   "name": "podsnip",
+  "productName": "Podsnip",
   "version": "0.1.0",
   "description": "Podcast annotation and streaming app for Linux",
   "main": "dist/main/main.js",
