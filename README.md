@@ -1,45 +1,59 @@
+![Podsnip Banner](/home/gerald/.gemini/antigravity/brain/2e97d050-6716-4c1d-a5c0-165e5773cd09/app_icon_banner_1770650956548.png)
+
 # Podsnip
 
-A modern podcast streaming and annotation app for Linux with automatic transcription using local whisper.cpp.
+A modern, privacy-focused podcast player for Linux that powers up your listening with **local AI transcription** and **synchronized annotations**.
 
-## Features
+Built with Electron, React, and TypeScript. Optimized for performance and privacy.
 
-- Podcast feed management (RSS/Atom)
-- Audio playback with controls
-- Automatic transcription with local Whisper (whisper.cpp)
-- Synchronized transcript annotation
-- Notes library and organization
-- Privacy-focused: all transcription happens locally
+![App Screenshot](/home/gerald/.gemini/antigravity/brain/2e97d050-6716-4c1d-a5c0-165e5773cd09/media__1770628682047.png)
 
-## Development
+## 🚀 Features
+
+### 🎧 Smart Listening
+- **Clean Interface**: Distraction-free player with focus on content.
+- **Queue Management**: Easily manage your listening queue.
+- **Playback Controls**: Variable speed (0.5x - 2.0x), skip intervals, and keyboard shortcuts.
+- **Offline Support**: Download episodes for offline listening.
+
+### 📝 AI Transcription & Notes
+- **Local Transcription**: Uses [whisper.cpp](https://github.com/ggerganov/whisper.cpp) to transcribe episodes locally on your device. Zero data leaves your machine.
+- **Interactive Transcripts**: Click any text to jump to that part of the audio.
+- **Snippet Annotations**: Highlight transcript segments and add personal notes.
+- **Searchable**: Find any spoken word across your library.
+
+![Transcription View](/home/gerald/.gemini/antigravity/brain/2e97d050-6716-4c1d-a5c0-165e5773cd09/media__1770629022871.png)
+
+## 🛠️ Installation
 
 ### Prerequisites
+- **whisper.cpp**: Required for transcription features. [Installation Guide](https://github.com/ggerganov/whisper.cpp)
 
-- Node.js 18+ and npm
-- Linux development environment
-- whisper.cpp (for transcription)
+### Running the AppImage
+1. Download the latest `.AppImage` from Releases.
+2. Make it executable:
+   ```bash
+   chmod +x Podsnip-1.0.0.AppImage
+   ```
+3. Run it:
+   ```bash
+   ./Podsnip-1.0.0.AppImage
+   ```
 
-### Setting up whisper.cpp
+### ⚙️ Configuration
+Go to **Settings > Transcription** and point Podsnip to your local `whisper-cpp` binary (e.g., `~/whisper.cpp/main` or `~/whisper.cpp/build/bin/whisper-cli`).
 
-Podsnip uses whisper.cpp for local, privacy-focused transcription:
+## ⌨️ Keyboard Shortcuts
 
-```bash
-# 1. Install dependencies (Debian/Ubuntu)
-sudo apt-get install build-essential
+| Key | Action |
+|-----|--------|
+| `Space` | Play / Pause |
+| `←` / `→` | Seek backward/forward 15s |
+| `s` | Cycle playback speed |
+| `n` | Take a note (at current time) |
+| `w` | Toggle fullscreen player |
 
-# 2. Clone and build whisper.cpp
-git clone https://github.com/ggerganov/whisper.cpp.git
-cd whisper.cpp
-make
-
-# 3. Download a model (base model recommended for balance of speed/accuracy)
-bash ./models/download-ggml-model.sh base
-
-# 4. Create a symlink for easy access
-sudo ln -s ~/whisper.cpp/main /usr/local/bin/whisper-cpp
-```
-
-### Getting Started
+## 🏗️ Development
 
 ```bash
 # Install dependencies
@@ -51,31 +65,10 @@ npm run dev
 # Build for production
 npm run build
 
-# Package as RPM/DEB
+# Package (AppImage)
 npm run package
 ```
 
-## Project Structure
+## 📄 License
 
-```
-podsnip/
-├── src/
-│   ├── main/          # Electron main process
-│   ├── renderer/      # React frontend
-│   └── shared/        # Shared types and utilities
-├── dist/              # Build output
-└── release/           # Packaged releases
-```
-
-## Tech Stack
-
-- **Framework**: Electron + React + TypeScript
-- **Database**: SQLite (better-sqlite3)
-- **Audio**: HTML5 Audio API
-- **Transcription**: whisper.cpp (local, privacy-focused)
-- **Feed Parsing**: feedparser
-- **State Management**: Zustand
-
-## License
-
-MIT
+MIT © [Gerald]
