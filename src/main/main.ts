@@ -20,9 +20,9 @@ function createWindow() {
 
   mainWindow = new BrowserWindow({
     width: 1400,
-    height: 900,
-    minWidth: 1000,
-    minHeight: 600,
+    height: 800,
+    minWidth: 900,
+    minHeight: 550,
     title: 'Podsnip',
     webPreferences: {
       nodeIntegration: false,
