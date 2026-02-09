@@ -9,10 +9,8 @@ import {
   Search,
   ChevronDown,
   Check,
-  Filter,
   LayoutGrid,
   List,
-  Calendar,
   Clock,
   ArrowUpDown,
   Trash2,
@@ -347,11 +345,6 @@ function NotesView() {
 
   const renderNoteCard = (annotation: EnrichedAnnotation, compact: boolean = false) => (
     <motion.div
-      layout
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      transition={{ duration: 0.2 }}
       key={annotation.id}
       className="note-card glass-panel"
     >
@@ -428,49 +421,40 @@ function NotesView() {
   // Render Masonry Grid (All Notes)
   const renderMasonryGrid = () => (
     <div className="notes-masonry-grid">
-      <AnimatePresence mode='popLayout'>
-        {filteredAnnotations.map((a) => renderNoteCard(a))}
-      </AnimatePresence>
+      {filteredAnnotations.map((a) => renderNoteCard(a))}
     </div>
   );
 
   // Render Podcast List (Level 1)
   const renderPodcastList = () => (
     <div className="podcast-grid">
-      <AnimatePresence mode='popLayout'>
-        {groupedPodcasts.map((group) => (
-          <motion.div
-            layout
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            transition={{ duration: 0.2 }}
-            key={group.podcastId}
-            className="podcast-notes-card"
-            onClick={() => handleInternalNavigate('podcasts', group.podcastId)}
-          >
-            {group.artworkUrl ? (
-              <div className="podcast-notes-artwork-container">
-                <img src={group.artworkUrl} alt={group.podcastTitle} className="podcast-notes-artwork" />
-              </div>
-            ) : (
-              <div className="podcast-notes-artwork-placeholder">
-                <Headphones size={48} />
-              </div>
-            )}
+      {groupedPodcasts.map((group) => (
+        <motion.div
+          key={group.podcastId}
+          className="podcast-notes-card"
+          onClick={() => handleInternalNavigate('podcasts', group.podcastId)}
+        >
+          {group.artworkUrl ? (
+            <div className="podcast-notes-artwork-container">
+              <img src={group.artworkUrl} alt={group.podcastTitle} className="podcast-notes-artwork" />
+            </div>
+          ) : (
+            <div className="podcast-notes-artwork-placeholder">
+              <Headphones size={48} />
+            </div>
+          )}
 
-            <div className="podcast-notes-info">
-              <h3 className="podcast-notes-title">{group.podcastTitle}</h3>
-              <div className="podcast-notes-footer">
-                <span className="podcast-notes-count">{group.annotations.length} Notes</span>
-                <div className="podcast-last-updated">
-                  Last edited {formatDate(group.annotations[0].created_at)}
-                </div>
+          <div className="podcast-notes-info">
+            <h3 className="podcast-notes-title">{group.podcastTitle}</h3>
+            <div className="podcast-notes-footer">
+              <span className="podcast-notes-count">{group.annotations.length} Notes</span>
+              <div className="podcast-last-updated">
+                Last edited {formatDate(group.annotations[0].created_at)}
               </div>
             </div>
-          </motion.div>
-        ))}
-      </AnimatePresence>
+          </div>
+        </motion.div>
+      ))}
     </div>
   );
 
