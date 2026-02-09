@@ -1,4 +1,6 @@
-![Podsnip Banner](/home/gerald/.gemini/antigravity/brain/2e97d050-6716-4c1d-a5c0-165e5773cd09/app_icon_banner_1770650956548.png)
+<p align="center">
+  <img src="icon.png" width="128" alt="Podsnip Icon" />
+</p>
 
 # Podsnip
 
@@ -6,7 +8,7 @@ A modern, privacy-focused podcast player for Linux that powers up your listening
 
 Built with Electron, React, and TypeScript. Optimized for performance and privacy.
 
-![App Screenshot](/home/gerald/.gemini/antigravity/brain/2e97d050-6716-4c1d-a5c0-165e5773cd09/media__1770628682047.png)
+![App Screenshot](screenshots/App%20Screenshot.png)
 
 ## 🚀 Features
 
@@ -16,13 +18,19 @@ Built with Electron, React, and TypeScript. Optimized for performance and privac
 - **Playback Controls**: Variable speed (0.5x - 2.0x), skip intervals, and keyboard shortcuts.
 - **Offline Support**: Download episodes for offline listening.
 
-### 📝 AI Transcription & Notes
+### 📝 AI Transcription & Interaction
 - **Local Transcription**: Uses [whisper.cpp](https://github.com/ggerganov/whisper.cpp) to transcribe episodes locally on your device. Zero data leaves your machine.
 - **Interactive Transcripts**: Click any text to jump to that part of the audio.
-- **Snippet Annotations**: Highlight transcript segments and add personal notes.
 - **Searchable**: Find any spoken word across your library.
 
-![Transcription View](/home/gerald/.gemini/antigravity/brain/2e97d050-6716-4c1d-a5c0-165e5773cd09/media__1770629022871.png)
+![Transcription View](screenshots/Transcription%20View.png)
+
+### ✍️ Notes & Highlights
+- **Snippet Annotations**: Highlight transcript segments and add personal notes.
+- **Rich Note Taking**: Capture thoughts without interrupting playback.
+- **Review Mode**: Browse all your notes and highlights in one place.
+
+![Notes View](screenshots/Notes%20View.png)
 
 ## 🛠️ Installation
 
