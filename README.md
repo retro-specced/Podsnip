@@ -4,7 +4,7 @@
 
 # Podsnip
 
-A modern, privacy-focused podcast player for Linux that powers up your listening with **local AI transcription** and **synchronized annotations**.
+**Podsnip** transforms your podcast listening into active learning. By leveraging powerful **local AI transcription**, it turns every episode into interactive text, allowing you to **highlight snippets**, take **synchronized notes**, and search your entire audio library—all processed privately on your device.
 
 Built with Electron, React, and TypeScript. Optimized for performance and privacy.
 
@@ -35,7 +35,7 @@ Built with Electron, React, and TypeScript. Optimized for performance and privac
 ## 🛠️ Installation
 
 ### Prerequisites
-- **whisper.cpp**: Required for transcription features. [Installation Guide](https://github.com/ggerganov/whisper.cpp)
+- **whisper.cpp**: Required for transcription features. [Installation Guide](https://github.com/ggml-org/whisper.cpp)
 
 ### Running the AppImage
 1. Download the latest `.AppImage` from Releases.
@@ -79,4 +79,4 @@ npm run package
 
 ## 📄 License
 
-MIT © [Gerald]
+MIT 
