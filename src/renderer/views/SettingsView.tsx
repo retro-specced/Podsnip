@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import '../styles/SettingsView.css';
 import { ScrollableContainer } from '../components/ScrollableContainer';
 
+import PodsnipLogo from '../assets/Podsnip.png';
+
 function SettingsView() {
   const [localAvailable, setLocalAvailable] = useState(false);
   const [installInstructions, setInstallInstructions] = useState('');
@@ -24,6 +26,15 @@ function SettingsView() {
     <div className="settings-view">
       <ScrollableContainer className="settings-container">
         <h1 className="settings-title">Settings</h1>
+
+        <div className="settings-section about-section">
+          <img src={PodsnipLogo} alt="Podsnip Logo" className="settings-logo" />
+          <h2 className="section-title">About</h2>
+          <p className="app-version">Podsnip v0.1.0</p>
+          <p className="section-description">
+            A podcast streaming and annotation app with local transcription.
+          </p>
+        </div>
 
         <div className="settings-section">
           <h2 className="section-title">Transcription</h2>
@@ -81,14 +92,6 @@ function SettingsView() {
               </tr>
             </tbody>
           </table>
-        </div>
-
-        <div className="settings-section">
-          <h2 className="section-title">About</h2>
-          <p className="section-description">Podsnip v0.1.0</p>
-          <p className="section-description">
-            A podcast annotation and streaming app for Linux with local transcription.
-          </p>
         </div>
       </ScrollableContainer>
     </div>

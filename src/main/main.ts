@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain, nativeImage } from 'electron';
 import * as path from 'path';
 import { DatabaseService } from './services/database';
 import { PodcastService } from './services/podcast';
@@ -10,6 +10,8 @@ let podcastService: PodcastService;
 let localWhisperService: LocalWhisperService;
 
 function createWindow() {
+  const icon = nativeImage.createFromPath(path.join(__dirname, '../../icon.png'));
+
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
@@ -23,6 +25,7 @@ function createWindow() {
     titleBarStyle: 'hiddenInset',
     backgroundColor: '#ffffff',
     show: false,
+    icon: icon,
   });
 
   mainWindow.once('ready-to-show', () => {

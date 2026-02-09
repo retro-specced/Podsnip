@@ -46,9 +46,11 @@
   "build": {
     "appId": "com.podsnip.app",
     "productName": "Podsnip",
+    "icon": "icon.png",
     "files": [
       "dist/**/*",
-      "package.json"
+      "package.json",
+      "icon.png"
     ],
     "directories": {
       "output": "release"
@@ -57,7 +59,8 @@
       "target": [
         "AppImage"
       ],
-      "category": "AudioVideo"
+      "category": "AudioVideo",
+      "icon": "icon.png"
     }
   }
 }
