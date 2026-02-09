@@ -45,7 +45,7 @@ function SettingsView() {
         <div className="settings-section about-section">
           <img src={PodsnipLogo} alt="Podsnip Logo" className="settings-logo" />
           <h2 className="section-title">About</h2>
-          <p className="app-version">Podsnip v0.1.0</p>
+          <p className="app-version">Podsnip v1.0.0</p>
           <p className="section-description">
             A podcast streaming and annotation app with local transcription.
           </p>

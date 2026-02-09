@@ -18,10 +18,8 @@ Built with Electron, React, and TypeScript. Optimized for performance and privac
 - **Playback Controls**: Variable speed (0.5x - 2.0x), skip intervals, and keyboard shortcuts.
 - **Offline Support**: Download episodes for offline listening.
 
-### 📝 AI Transcription & Interaction
+### 📝 AI Transcription
 - **Local Transcription**: Uses [whisper.cpp](https://github.com/ggerganov/whisper.cpp) to transcribe episodes locally on your device. Zero data leaves your machine.
-- **Interactive Transcripts**: Click any text to jump to that part of the audio.
-- **Searchable**: Find any spoken word across your library.
 
 ![Transcription View](screenshots/Transcription%20View.png)
 
@@ -49,7 +47,7 @@ Built with Electron, React, and TypeScript. Optimized for performance and privac
    ```
 
 ### ⚙️ Configuration
-Go to **Settings > Transcription** and point Podsnip to your local `whisper-cpp` binary (e.g., `~/whisper.cpp/main` or `~/whisper.cpp/build/bin/whisper-cli`).
+Go to **Settings > Transcription** and point Podsnip to your local `whisper-cpp` binary (e.g., `~/whisper.cpp/build/bin/whisper-cli`).
 
 ## ⌨️ Keyboard Shortcuts
 
