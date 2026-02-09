@@ -9,6 +9,10 @@ let db: DatabaseService;
 let podcastService: PodcastService;
 let localWhisperService: LocalWhisperService;
 
+// Ensure proper app name for Linux taskbar (especially in packaged mode)
+if (process.platform === 'linux') {
+  app.setAppUserModelId('com.podsnip.app');
+}
 app.setName('Podsnip');
 
 function createWindow() {
