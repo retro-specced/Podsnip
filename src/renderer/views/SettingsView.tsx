@@ -7,6 +7,7 @@ import PodsnipLogo from '../assets/Podsnip.png';
 function SettingsView() {
   const [localAvailable, setLocalAvailable] = useState(false);
   const [installInstructions, setInstallInstructions] = useState('');
+  const [whisperPath, setWhisperPath] = useState<string | null>(null);
 
   useEffect(() => {
     checkLocalWhisper();
@@ -17,8 +18,22 @@ function SettingsView() {
       const result = await window.api.transcription.checkLocal();
       setLocalAvailable(result.available);
       setInstallInstructions(result.instructions);
+      setWhisperPath(result.currentPath || null);
     } catch (error) {
       console.error('Failed to check local whisper:', error);
+    }
+  };
+
+  const handleBrowseWhisper = async () => {
+    try {
+      const filePath = await window.api.transcription.browseForBinary();
+      if (filePath) {
+        const result = await window.api.transcription.setWhisperPath(filePath);
+        setLocalAvailable(result.available);
+        setWhisperPath(result.currentPath || null);
+      }
+    } catch (error) {
+      console.error('Failed to set whisper path:', error);
     }
   };
 
@@ -44,13 +59,29 @@ function SettingsView() {
 
           {localAvailable ? (
             <div className="setting-item">
-              <p className="setting-success">✅ Local Whisper is installed and ready to use!</p>
+              <p className="setting-success">✅ Local Whisper is installed and ready!</p>
+              <div className="whisper-path-row">
+                <input
+                  type="text"
+                  className="whisper-path-input"
+                  value={whisperPath || ''}
+                  readOnly
+                />
+                <button className="browse-button" onClick={handleBrowseWhisper}>
+                  Change
+                </button>
+              </div>
             </div>
           ) : (
             <div className="setting-item">
               <div className="install-instructions">
-                <h3>Local Whisper Not Installed</h3>
+                <h3>Local Whisper Not Detected</h3>
                 <pre>{installInstructions}</pre>
+                <div className="whisper-path-row">
+                  <button className="browse-button primary" onClick={handleBrowseWhisper}>
+                    Browse for whisper.cpp binary
+                  </button>
+                </div>
               </div>
             </div>
           )}

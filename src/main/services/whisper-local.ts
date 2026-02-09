@@ -8,25 +8,69 @@ import { DatabaseService } from './database';
 export class LocalWhisperService {
   private whisperPath: string | null = null;
   private modelPath: string | null = null;
+  private db: DatabaseService | null = null;
 
-  constructor() {
-    // Check if whisper.cpp is installed
+  constructor(db?: DatabaseService) {
+    this.db = db || null;
     this.checkWhisperInstallation();
   }
 
+  // Set database reference (call after db is initialized)
+  setDatabase(db: DatabaseService): void {
+    this.db = db;
+    this.recheckInstallation();
+  }
+
+  // Re-check installation (call after setting custom path)
+  recheckInstallation(): void {
+    this.whisperPath = null;
+    this.checkWhisperInstallation();
+  }
+
+  // Set custom binary path from user
+  setCustomPath(binaryPath: string): boolean {
+    if (fs.existsSync(binaryPath)) {
+      if (this.db) {
+        this.db.setSetting('whisper_binary_path', binaryPath);
+      }
+      this.whisperPath = binaryPath;
+      console.log('Custom whisper path set:', binaryPath);
+      return true;
+    }
+    return false;
+  }
+
+  // Get current path for display in settings
+  getCurrentPath(): string | null {
+    return this.whisperPath;
+  }
+
   private checkWhisperInstallation(): void {
-    // Check common installation paths
+    // First, check user-configured path from database
+    if (this.db) {
+      const customPath = this.db.getSetting('whisper_binary_path');
+      if (customPath && fs.existsSync(customPath)) {
+        this.whisperPath = customPath;
+        console.log('Using custom whisper path:', customPath);
+        return;
+      }
+    }
+
+    // Fallback: check common installation paths
     const possiblePaths = [
       '/usr/local/bin/whisper-cpp',
+      '/usr/local/bin/whisper-cli',
       '/usr/bin/whisper-cpp',
       path.join(os.homedir(), '.local/bin/whisper-cpp'),
+      path.join(os.homedir(), 'whisper.cpp/build/bin/whisper-cli'),
       path.join(os.homedir(), 'whisper.cpp/main'),
     ];
 
     for (const p of possiblePaths) {
       if (fs.existsSync(p)) {
         this.whisperPath = p;
-        break;
+        console.log('Found whisper.cpp at:', p);
+        return;
       }
     }
   }
@@ -36,32 +80,23 @@ export class LocalWhisperService {
   }
 
   getInstallInstructions(): string {
-    return `
-To use local transcription, you need to install whisper.cpp:
+    return `To use local transcription, install whisper.cpp:
 
-1. Install dependencies:
-   sudo dnf install -y git make gcc g++ ffmpeg
-
-2. Clone and build whisper.cpp:
-   cd ~
-   git clone https://github.com/ggerganov/whisper.cpp.git
-   cd whisper.cpp
-   make
-
-3. Download a model (base model recommended for balance of speed/accuracy):
+1. Visit: https://github.com/ggml-org/whisper.cpp
+2. Follow the build instructions for your system
+3. Download a model (base recommended):
    bash ./models/download-ggml-model.sh base
-
-4. Create a symlink:
-   sudo ln -s ~/whisper.cpp/main /usr/local/bin/whisper-cpp
-
-5. Restart Podsnip
+4. Click "Browse" below and select the binary:
+   - 'whisper-cli' (newer builds)
+   - or 'main' (older builds)
+   
+Typical location: ~/whisper.cpp/build/bin/whisper-cli
 
 Model sizes:
-- tiny: Fastest, least accurate (~75MB)
-- base: Good balance (~142MB) - RECOMMENDED
-- small: Better accuracy (~466MB)
-- medium: High accuracy (~1.5GB, slower)
-- large: Best accuracy (~2.9GB, very slow)
+- tiny: ~75MB (fastest)
+- base: ~142MB (recommended)
+- small: ~466MB
+- medium: ~1.5GB
 `;
   }
 
@@ -167,12 +202,31 @@ Model sizes:
   }
 
   private findModel(): string | null {
-    // Check multiple possible whisper.cpp locations
+    // Check multiple possible whisper.cpp model locations
     const possibleDirs = [
+      // Standard locations
       path.join(os.homedir(), 'whisper.cpp/models'),
-      path.join(os.homedir(), 'Documents/Projects/Models/whisper.cpp/models'),
+      path.join(os.homedir(), '.local/share/whisper.cpp/models'),
       '/usr/local/share/whisper.cpp/models',
+      '/usr/share/whisper.cpp/models',
+      // Common build locations
+      path.join(os.homedir(), 'Projects/whisper.cpp/models'),
+      path.join(os.homedir(), 'src/whisper.cpp/models'),
+      path.join(os.homedir(), 'git/whisper.cpp/models'),
+      path.join(os.homedir(), 'Downloads/whisper.cpp/models'),
+      // Legacy path
+      path.join(os.homedir(), 'Documents/Projects/Models/whisper.cpp/models'),
     ];
+
+    // If we found a whisper binary, also check relative to it
+    if (this.whisperPath) {
+      const whisperDir = path.dirname(this.whisperPath);
+      // Check sibling 'models' folder
+      possibleDirs.unshift(path.join(whisperDir, 'models'));
+      // Check parent's 'models' folder (for builds where binary is in bin/)
+      possibleDirs.unshift(path.join(whisperDir, '..', 'models'));
+      possibleDirs.unshift(path.join(whisperDir, '..', '..', 'models'));
+    }
 
     const models = [
       'ggml-base.bin',

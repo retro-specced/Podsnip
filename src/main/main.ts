@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, nativeImage } from 'electron';
+import { app, BrowserWindow, ipcMain, nativeImage, dialog } from 'electron';
 import * as path from 'path';
 import { DatabaseService } from './services/database';
 import { PodcastService } from './services/podcast';
@@ -58,6 +58,7 @@ app.whenReady().then(async () => {
   db = new DatabaseService(path.join(userDataPath, 'podsnip.db'));
   podcastService = new PodcastService(db);
   localWhisperService = new LocalWhisperService();
+  localWhisperService.setDatabase(db);
 
   createWindow();
 
@@ -138,7 +139,26 @@ ipcMain.handle('transcription:check-local', async () => {
   return {
     available: localWhisperService.isAvailable(),
     instructions: localWhisperService.getInstallInstructions(),
+    currentPath: localWhisperService.getCurrentPath(),
   };
+});
+
+ipcMain.handle('transcription:set-whisper-path', async (_, binaryPath: string) => {
+  const success = localWhisperService.setCustomPath(binaryPath);
+  return {
+    success,
+    available: localWhisperService.isAvailable(),
+    currentPath: localWhisperService.getCurrentPath(),
+  };
+});
+
+ipcMain.handle('dialog:open-file', async () => {
+  const result = await dialog.showOpenDialog({
+    properties: ['openFile'],
+    title: 'Select whisper.cpp binary (whisper-cli or main)',
+    filters: [{ name: 'All Files', extensions: ['*'] }],
+  });
+  return result.canceled ? null : result.filePaths[0];
 });
 
 // IPC Handlers for Annotations

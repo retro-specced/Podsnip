@@ -96,7 +96,9 @@ declare global {
       transcription: {
         get: (episodeId: number) => Promise<Transcript[]>;
         create: (episodeId: number, audioUrl: string) => Promise<void>;
-        checkLocal: () => Promise<{ available: boolean; instructions: string }>;
+        checkLocal: () => Promise<{ available: boolean; instructions: string; currentPath?: string }>;
+        setWhisperPath: (binaryPath: string) => Promise<{ success: boolean; available: boolean; currentPath?: string }>;
+        browseForBinary: () => Promise<string | null>;
         onProgress: (callback: (data: { episodeId: number; progress: number; stage: string }) => void) => void;
         removeProgressListener: () => void;
       };
