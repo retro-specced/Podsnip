@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAppStore } from '../store/appStore';
 import '../styles/AddPodcastModal.css';
+import { Mic, FileText, Library, X, Search, Rss, Plus } from 'lucide-react';
 
 interface AddPodcastModalProps {
     isOpen: boolean;
@@ -104,30 +105,32 @@ function AddPodcastModal({ isOpen, onClose }: AddPodcastModalProps) {
 
     return (
         <div className="modal-overlay" onClick={handleBackdropClick}>
-            <div className="modal-container">
+            <div className="modal-container glass-panel">
                 <button className="modal-close-button" onClick={handleClose} disabled={isAdding}>
-                    ✕
+                    <X size={18} />
                 </button>
 
                 <div className="modal-content">
                     <div className="modal-left">
                         <div className="modal-welcome-content">
-                            <div className="modal-app-icon">🎙️</div>
+                            <div className="modal-app-icon">
+                                <Mic size={48} strokeWidth={1.5} />
+                            </div>
                             <h2>Add a Podcast</h2>
                             <p className="modal-tagline">
                                 Expand your library with more podcasts to listen and annotate
                             </p>
                             <div className="modal-features">
                                 <div className="modal-feature">
-                                    <span className="modal-feature-icon">📝</span>
+                                    <span className="modal-feature-icon"><FileText size={18} /></span>
                                     <span>Automatic transcription</span>
                                 </div>
                                 <div className="modal-feature">
-                                    <span className="modal-feature-icon">🔍</span>
+                                    <span className="modal-feature-icon"><Search size={18} /></span>
                                     <span>Synchronized playback</span>
                                 </div>
                                 <div className="modal-feature">
-                                    <span className="modal-feature-icon">📚</span>
+                                    <span className="modal-feature-icon"><Library size={18} /></span>
                                     <span>Organized notes library</span>
                                 </div>
                             </div>
@@ -142,15 +145,18 @@ function AddPodcastModal({ isOpen, onClose }: AddPodcastModalProps) {
                             </p>
 
                             <form onSubmit={handleAddPodcast} className="modal-feed-form">
-                                <input
-                                    type="url"
-                                    placeholder="https://example.com/podcast/feed.xml"
-                                    value={feedUrl}
-                                    onChange={(e) => setFeedUrl(e.target.value)}
-                                    disabled={isAdding}
-                                    className="modal-feed-input"
-                                    required
-                                />
+                                <div className="input-wrapper">
+                                    <Rss size={16} className="input-icon" />
+                                    <input
+                                        type="url"
+                                        placeholder="https://example.com/podcast/feed.xml"
+                                        value={feedUrl}
+                                        onChange={(e) => setFeedUrl(e.target.value)}
+                                        disabled={isAdding}
+                                        className="modal-feed-input"
+                                        required
+                                    />
+                                </div>
                                 {localError && (
                                     <div className="modal-error">
                                         {localError}
@@ -161,7 +167,12 @@ function AddPodcastModal({ isOpen, onClose }: AddPodcastModalProps) {
                                     disabled={isAdding}
                                     className="modal-add-button"
                                 >
-                                    {isAdding ? 'Adding...' : 'Add Podcast'}
+                                    {isAdding ? 'Adding...' : (
+                                        <>
+                                            <Plus size={16} />
+                                            <span>Add Podcast</span>
+                                        </>
+                                    )}
                                 </button>
                             </form>
 
@@ -169,25 +180,25 @@ function AddPodcastModal({ isOpen, onClose }: AddPodcastModalProps) {
                                 <p className="modal-examples-title">Popular podcasts to try:</p>
                                 <div className="modal-example-feeds">
                                     <button
-                                        onClick={() => setFeedUrl('https://feeds.simplecast.com/54nAGcIl')}
+                                        onClick={() => setFeedUrl('https://rss.art19.com/tim-ferriss-show')}
                                         className="modal-example-button"
                                         disabled={isAdding}
                                     >
-                                        The Daily (NY Times)
+                                        The Tim Ferriss Show
                                     </button>
                                     <button
-                                        onClick={() => setFeedUrl('https://feeds.npr.org/510318/podcast.xml')}
+                                        onClick={() => setFeedUrl('http://feeds.megaphone.fm/vergecast')}
                                         className="modal-example-button"
                                         disabled={isAdding}
                                     >
-                                        Wait Wait... Don't Tell Me!
+                                        The Vergecast
                                     </button>
                                     <button
-                                        onClick={() => setFeedUrl('https://feeds.megaphone.fm/sciencevs')}
+                                        onClick={() => setFeedUrl('https://feeds.acast.com/public/shows/64e387653cabbc001153a5a5')}
                                         className="modal-example-button"
                                         disabled={isAdding}
                                     >
-                                        Science Vs
+                                        The 404 Media Podcast
                                     </button>
                                 </div>
                             </div>
