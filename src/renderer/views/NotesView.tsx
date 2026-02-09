@@ -12,6 +12,7 @@ import {
   LayoutGrid,
   List,
   Clock,
+  ArrowLeft,
   ArrowUpDown,
   Trash2,
   Headphones
@@ -491,7 +492,8 @@ function NotesView() {
             className="back-to-podcasts-button"
             onClick={() => handleInternalNavigate('podcasts', null)}
           >
-            ← Back to Library
+            <ArrowLeft size={18} />
+            <span>Back to Library</span>
           </button>
           <h2 className="section-title" style={{ margin: 0 }}>{group.podcastTitle}</h2>
         </div>
@@ -704,7 +706,7 @@ function NotesView() {
                   className={`filter-tag-chip ${selectedTags.length === 0 ? 'active' : ''}`}
                   onClick={() => setSelectedTags([])}
                 >
-                  Running
+                  All Notes
                 </button>
                 {uniqueTags.map(tag => (
                   <button

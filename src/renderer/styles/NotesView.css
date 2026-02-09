@@ -646,19 +646,30 @@
 .back-to-podcasts-button {
   display: flex;
   align-items: center;
-  gap: var(--spacing-xs);
-  padding: var(--spacing-xs) var(--spacing-md);
-  background: var(--surface);
-  color: var(--text-primary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-sm);
+  gap: 8px;
+  padding: 0 16px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-secondary);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  font-size: 13px;
   font-weight: 600;
-  transition: var(--transition);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  line-height: 1;
+}
+
+.back-to-podcasts-button span {
+  display: flex;
+  align-items: center;
+  margin-top: 1px;
 }
 
 .back-to-podcasts-button:hover {
-  background: var(--border-color);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: var(--text-primary);
 }
 
 /* Podcast Episode Grouping */
@@ -723,7 +734,6 @@
   background: rgba(255, 255, 255, 0.08);
   border-color: rgba(255, 255, 255, 0.2);
   color: var(--text-primary);
-  transform: translateY(-1px);
 }
 
 .filter-tag-chip.active {
